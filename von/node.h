@@ -3,7 +3,8 @@
 
 #include <vector>
 #include "button.h"
-#include "weight.h"
+
+class Weight;
 
 using namespace std;
 
@@ -12,9 +13,9 @@ class Node : public Button
 private:
 	int x, y,r;
 	bool lclicked, rclicked;
-	vector<Weight*> weight_list;
 
 public:
+	vector<Weight*> weight_list;
 	Node(){};
 	Node(int x, int y);
 	int getX();
@@ -22,6 +23,7 @@ public:
 	int getR();
 	void setXY(int x, int y);
 	void print(HDC hdc);
+	void printWeight(HDC hdc);
 	bool isIn(int x, int y);
 	void LDown();
 	bool LUp();

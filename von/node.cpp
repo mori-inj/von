@@ -1,5 +1,7 @@
 #include "node.h"
+#include "weight.h"
 #include "print.h"
+
 
 Node::Node(int x, int y)
 {
@@ -28,9 +30,14 @@ int Node::getR()
 {
 	return r;
 }
-
+void Node::printWeight(HDC hdc)
+{
+	for(int i=0; i<weight_list.size(); i++)
+		weight_list[i]->print(hdc);
+}
 void Node::print(HDC hdc)
 {
+	
 	HPEN hPen,oldPen;
 	HBRUSH hBrush, oldBrush;
 
@@ -45,9 +52,6 @@ void Node::print(HDC hdc)
 	DeleteObject(hPen);
 	SelectObject(hdc, oldBrush);
 	DeleteObject(hBrush);
-
-	for(int i=0; i<weight_list.size(); i++)
-		weight_list[i]->print(hdc);
 }
 bool Node::isIn(int x, int y)
 {

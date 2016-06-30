@@ -82,12 +82,14 @@
     <ClCompile Include="node_button.cpp" />
     <ClCompile Include="print.cpp" />
     <ClCompile Include="von.cpp" />
+    <ClCompile Include="weight.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="button.h" />
     <ClInclude Include="node.h" />
     <ClInclude Include="node_button.h" />
     <ClInclude Include="print.h" />
+    <ClInclude Include="weight.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

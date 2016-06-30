@@ -10,17 +10,27 @@ class Weight
 {
 private:
 	long double w;
-	Node src;
-	Node dst;
-	int sx,sy,dx,dy;
+	Node* src;
+	Node* dst;
+	int srcx,srcy,dstx,dsty;
 public:
-	Weight(Node& src);
-	Weight(Node& src, Node& dst);
+	Weight(){};
+	Weight(Node* src);
+	Weight(Weight& weight);
+	Weight(Node* src, Node* dst);
+	Node* getSrc();
+	Node* getDst();
+	long double getW();
 	void setDst(Node& dst);
+	void setSXSY(int x, int y);
 	void setDXDY(int x, int y);
 	void setW(long double w);
 	void print(HDC hdc);
 	bool isIn(int x, int y);
+	int getSX();
+	int getSY();
+	int getDX();
+	int getDY();
 };
 
 #endif
