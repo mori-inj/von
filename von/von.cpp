@@ -6,6 +6,7 @@
 //#include "resource.h"
 #include "print.h"
 #include "node_button.h"
+#include "plot_button.h"
 #include "node.h"
 #include "weight.h"
 
@@ -92,6 +93,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 	//HPEN hPen, oldPen;
 	static Weight temp_weight;
 	static NodeButton node_button(35,35,25);
+	static PlotButton plot_button(100,35,25);
 	static vector<Node*> node_list;
 
 	static bool node_add_flag;
@@ -129,11 +131,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 		SetBkColor(MemDC, RGB(255, 255, 255));
 		
 		node_button.print(MemDC);
+		plot_button.print(MemDC);
 		if(weight_add_flag)
 			temp_weight.print(MemDC);
-		for(int i=0; i<node_list.size(); i++)
+		for(int i=node_list.size()-1; i>=0; i--)
 			node_list[i]->printWeight(MemDC);
-		for(int i=0; i<node_list.size(); i++)
+		for(int i=node_list.size()-1; i>=0; i--)
 			node_list[i]->print(MemDC);
 		
 
@@ -146,7 +149,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 		//SelectObject(MemDC, oldBrush);
 		//DeleteObject(hBrush);
 		DeleteObject(hBit);
-
 		EndPaint(hWnd, &ps);
 		break;
 
@@ -157,7 +159,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		//node add(toggle) and fix
 		//end of toggle
-		if(node_add_flag)
+		if(node_add_flag && !weight_add_flag)
 		{
 			node_add_flag = false;
 			toggle_end = true;
@@ -166,7 +168,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		//node add button clicked(down)
 		//prepare for toggle
-		if(node_button.isIn(xpos,ypos))
+		if(node_button.isIn(xpos,ypos) && !weight_add_flag)
 		{
 			node_button.LDown();
 			break;
@@ -174,7 +176,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		//weight add(toggle) and fix
 		//end of toggle
-		if(weight_add_flag)
+		if(weight_add_flag && !node_add_flag)
 		{
 			//for-loop: find dest
 			for(int i=0; i<node_list.size(); i++)
@@ -217,7 +219,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 		
 			//node add button clicked(down)
 			//start of toggle
-			if(node_button.isIn(xpos,ypos))
+			if(node_button.isIn(xpos,ypos) && !node_move_flag)
 			{
 				node_add_flag = node_button.LUp();
 				if(node_add_flag)
@@ -241,6 +243,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 						{
 							weight_add_flag = true;
 							temp_weight = Weight(node_list[i]);
+							temp_weight.setDXDY(xpos,ypos);
 							break;
 						}
 				break;
@@ -264,9 +267,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 
 	case WM_RBUTTONDOWN:
+	{
 		xpos = GET_X_LPARAM(lParam);
 		ypos = GET_Y_LPARAM(lParam);
+		
+		HMENU hPopupMenu = CreatePopupMenu();
+		Rect rect;
+		//AppendMenuW(hPopupMenu, MF_STRING, 0, L"New");
+		InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, UINT(hPopupMenu), (LPCWSTR)L"Exit");
+		InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, UINT(hPopupMenu), (LPCWSTR)L"Play");
+		//SetForegroundWindow(hWnd);
+		if(GetWindowRect(hWnd,(LPRECT)&rect))
+			TrackPopupMenu(hPopupMenu, TPM_RIGHTBUTTON | TPM_TOPALIGN | TPM_LEFTALIGN
+			/*TPM_BOTTOMALIGN | TPM_LEFTALIGN*/, xpos+rect.GetLeft()+8, ypos+rect.GetTop()+29, 0, hWnd, NULL);
 		break;
+	}
 
 
 	case WM_RBUTTONUP:
@@ -278,7 +293,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 	case WM_MOUSEMOVE:
 		xpos = GET_X_LPARAM(lParam);
 		ypos = GET_Y_LPARAM(lParam);
-		cout << "x: " << xpos << "  y: "<< ypos << endl;
+		//cout << "x: " << xpos << "  y: "<< ypos << endl;
 		if( xpos<=0+MARGIN || ypos<=0+MARGIN || xpos>=WIDTH-1-MARGIN || ypos>=HEIGHT-1-MARGIN )
 		{
 			ReleaseCapture();

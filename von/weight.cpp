@@ -23,6 +23,7 @@ Weight::Weight(Node* src)
 	long double d = (int)sqrt(dx*dx+dy*dy);
 	int snx = src->getR()*(dx/d);
 	int sny = src->getR()*(dy/d);*/
+	this->dst = NULL;
 
 	srcx = src->getX();//+snx;
 	srcy = src->getY();//+sny;
@@ -117,10 +118,44 @@ void Weight::print(HDC hdc)
 	hPen = CreatePen(PS_SOLID, 2, WHITE);
 	oldPen = (HPEN)SelectObject(hdc, hPen);
 
-	cout << dstx << " " << dsty << " " << srcx << " " << srcy << endl;
-	
 	MoveToEx(hdc,srcx,srcy,NULL); 
 	LineTo(hdc,dstx,dsty); 
+	
+	int dx = srcx - dstx;
+	int dy = srcy - dsty;
+	long double d = (int)sqrt(dx*dx+dy*dy);
+	if(d>=1)
+	{
+		if(dst==NULL)
+		{
+			int arrow_endx = dstx + (10)*dx/d;
+			int arrow_endy = dsty + (10)*dy/d;
+			int left_halfx = arrow_endx + 7*dy/d;
+			int left_halfy = arrow_endy - 7*dx/d;
+			int right_halfx = arrow_endx - 7*dy/d;
+			int right_halfy = arrow_endy + 7*dx/d;
+
+			MoveToEx(hdc, left_halfx, left_halfy, NULL);
+			LineTo(hdc,dstx,dsty);
+			MoveToEx(hdc, right_halfx, right_halfy, NULL);
+			LineTo(hdc,dstx,dsty);
+		
+		}
+		else
+		{
+			int arrow_endx = dstx + (10+dst->getR())*dx/d;
+			int arrow_endy = dsty + (10+dst->getR())*dy/d;
+			int left_halfx = arrow_endx + 7*dy/d;
+			int left_halfy = arrow_endy - 7*dx/d;
+			int right_halfx = arrow_endx - 7*dy/d;
+			int right_halfy = arrow_endy + 7*dx/d;
+	
+			MoveToEx(hdc, left_halfx, left_halfy, NULL);
+			LineTo(hdc,dstx+(dst->getR()*dx/d),dsty+(dst->getR()*dy/d));
+			MoveToEx(hdc, right_halfx, right_halfy, NULL);
+			LineTo(hdc,dstx+(dst->getR()*dx/d),dsty+(dst->getR()*dy/d));
+		}
+	}
 
 	SelectObject(hdc, oldPen);
 	DeleteObject(hPen);

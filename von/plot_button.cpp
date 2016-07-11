@@ -1,0 +1,46 @@
+#include "plot_button.h"
+#include "print.h"
+
+#define PI 3.14159265358979
+
+PlotButton::PlotButton(int x, int y, int r) : Node(x,y)
+{
+	this->x = x;
+	this->y = y;
+	this->r = r;
+}
+
+void PlotButton::print(HDC hdc)
+{
+	HPEN hPen,oldPen;
+	HBRUSH hBrush, oldBrush;
+
+	EllipseLine(hdc, x,y,r,1,WHITE, BLACK);
+
+	hPen = CreatePen(PS_SOLID, 1, WHITE);
+	oldPen = (HPEN)SelectObject(hdc, hPen);
+	hBrush = CreateSolidBrush(WHITE);
+	oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
+
+	POINT tri[3];
+	tri[0].x = x+10*cos(120*PI/180);
+	tri[0].y = y+10*sin(120*PI/180);
+
+	tri[1].x = x+10*cos(0*PI/180);
+	tri[1].y = y+10*sin(0*PI/180);
+
+	tri[2].x = x+10*cos(-120*PI/180);
+	tri[2].y = y+10*sin(-120*PI/180);
+
+	Polygon(hdc, tri, 3);
+
+	SelectObject(hdc, oldPen);
+	DeleteObject(hPen);
+	SelectObject(hdc, oldBrush);
+	DeleteObject(hBrush);
+}
+
+/*void NodeButton::print(HDC hdc){ Node::print(hdc); }
+bool NodeButton::isIn(int x, int y){ return Node::isIn(x, y); }
+void NodeButton::LDown(){ Node::LDown(); }
+bool NodeButton::LUp(){ return Node::LUp(); }*/
