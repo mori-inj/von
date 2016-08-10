@@ -13,6 +13,10 @@
 using namespace Gdiplus;
 using namespace std;
 #pragma comment(lib, "gdiplus")
+#pragma warning(disable:4018)
+
+#define IDM_PLOT_INPUT 100
+#define IDM_PLOT_OUTPUT 101
 
 
 typedef int NodeIdx;
@@ -107,224 +111,266 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 	switch (iMsg)
 	{
-	case WM_CREATE:
-		SetTimer(hWnd, 1, 10, 0);
-		break;
-
-	case WM_TIMER:
-		InvalidateRect(hWnd, NULL, FALSE);
-		break;
-
-	case WM_PAINT:
-		hdc = BeginPaint(hWnd, &ps);
-		GetClientRect(hWnd, &crt);
-
-		MemDC = CreateCompatibleDC(hdc);
-		hBit = CreateCompatibleBitmap(hdc, crt.right, crt.bottom);
-		OldBit = (HBITMAP)SelectObject(MemDC, hBit);
-		//hBrush = CreateSolidBrush(RGB(255, 255, 255));
-		//oldBrush = (HBRUSH)SelectObject(MemDC, hBrush);
-		//hPen = CreatePen(PS_SOLID, 5, RGB(255, 255, 255));
-		//oldPen = (HPEN)SelectObject(MemDC, hPen);
-
-		//FillRect(MemDC, &crt, hBrush);
-		SetBkColor(MemDC, RGB(255, 255, 255));
-		
-		node_button.print(MemDC);
-		plot_button.print(MemDC);
-		if(weight_add_flag)
-			temp_weight.print(MemDC);
-		for(int i=node_list.size()-1; i>=0; i--)
-			node_list[i]->printWeight(MemDC);
-		for(int i=node_list.size()-1; i>=0; i--)
-			node_list[i]->print(MemDC);
-		
-
-
-		BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
-		SelectObject(MemDC, OldBit);
-		DeleteDC(MemDC);
-		//SelectObject(MemDC, oldPen);
-		//DeleteObject(hPen);
-		//SelectObject(MemDC, oldBrush);
-		//DeleteObject(hBrush);
-		DeleteObject(hBit);
-		EndPaint(hWnd, &ps);
-		break;
-
-
-	case WM_LBUTTONDOWN:
-		xpos = GET_X_LPARAM(lParam);
-		ypos = GET_Y_LPARAM(lParam);
-
-		//node add(toggle) and fix
-		//end of toggle
-		if(node_add_flag && !weight_add_flag)
+		case WM_CREATE:
 		{
-			node_add_flag = false;
-			toggle_end = true;
+			SetTimer(hWnd, 1, 10, 0);
 			break;
 		}
 
-		//node add button clicked(down)
-		//prepare for toggle
-		if(node_button.isIn(xpos,ypos) && !weight_add_flag)
+		case WM_TIMER:
 		{
-			node_button.LDown();
+			InvalidateRect(hWnd, NULL, FALSE);
 			break;
 		}
 
-		//weight add(toggle) and fix
-		//end of toggle
-		if(weight_add_flag && !node_add_flag)
+		case WM_PAINT:
 		{
-			//for-loop: find dest
-			for(int i=0; i<node_list.size(); i++)
-				if(node_list[i]->isIn(xpos,ypos) && i!=node_idx)
-				{
-					temp_weight.setDst(*node_list[i]);
-					node_list[i]->weight_list.push_back(new Weight(temp_weight));
-					break;
-				}
-			weight_add_flag = false;
-			toggle_end = true;
+			hdc = BeginPaint(hWnd, &ps);
+			GetClientRect(hWnd, &crt);
+
+			MemDC = CreateCompatibleDC(hdc);
+			hBit = CreateCompatibleBitmap(hdc, crt.right, crt.bottom);
+			OldBit = (HBITMAP)SelectObject(MemDC, hBit);
+			//hBrush = CreateSolidBrush(RGB(255, 255, 255));
+			//oldBrush = (HBRUSH)SelectObject(MemDC, hBrush);
+			//hPen = CreatePen(PS_SOLID, 5, RGB(255, 255, 255));
+			//oldPen = (HPEN)SelectObject(MemDC, hPen);
+
+			//FillRect(MemDC, &crt, hBrush);
+			SetBkColor(MemDC, RGB(255, 255, 255));
+
+			node_button.print(MemDC);
+			plot_button.print(MemDC);
+			if(weight_add_flag)
+				temp_weight.print(MemDC);
+			for(int i=node_list.size()-1; i>=0; i--)
+				node_list[i]->printWeight(MemDC);
+			for(int i=node_list.size()-1; i>=0; i--)
+				node_list[i]->print(MemDC);
+
+
+
+			BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
+			SelectObject(MemDC, OldBit);
+			DeleteDC(MemDC);
+			//SelectObject(MemDC, oldPen);
+			//DeleteObject(hPen);
+			//SelectObject(MemDC, oldBrush);
+			//DeleteObject(hBrush);
+			DeleteObject(hBit);
+			EndPaint(hWnd, &ps);
 			break;
 		}
 
 
-
-		//node clickde(down): either drag(move) or add weight(toggle)
-		//prepare for toggle || start of drag
-		for(int i=0; i<node_list.size(); i++)
-		{
-			if(node_list[i]->isIn(xpos,ypos))
-			{
-				SetCapture(hWnd);
-				node_move_flag = true;
-				node_list[i]->LDown();
-				node_idx = i;
-				break;
-			}
-		}
-
-		
-		break;
-
-
-	case WM_LBUTTONUP:
-		if(!toggle_end)
+		case WM_LBUTTONDOWN:
 		{
 			xpos = GET_X_LPARAM(lParam);
 			ypos = GET_Y_LPARAM(lParam);
-		
-			//node add button clicked(down)
-			//start of toggle
-			if(node_button.isIn(xpos,ypos) && !node_move_flag)
+
+			//node add(toggle) and fix
+			//end of toggle
+			if(node_add_flag && !weight_add_flag)
 			{
-				node_add_flag = node_button.LUp();
-				if(node_add_flag)
-					node_list.push_back(new Node(xpos,ypos));
-				node_button.LUp();
+				node_add_flag = false;
+				toggle_end = true;
 				break;
 			}
-			node_button.LUp();
-		
 
-			//add wieght
-			//start of toggle
-			if(!node_moved)
+			//node add button clicked(down)
+			//prepare for toggle
+			if(node_button.isIn(xpos,ypos) && !weight_add_flag)
+			{
+				node_button.LDown();
+				break;
+			}
+
+			//weight add(toggle) and fix
+			//end of toggle
+			if(weight_add_flag && !node_add_flag)
+			{
+				//for-loop: find dest
+				for(int i=0; i<node_list.size(); i++)
+					if(node_list[i]->isIn(xpos,ypos) && i!=node_idx)
+					{
+						temp_weight.setDst(*node_list[i]);
+						node_list[i]->weight_list.push_back(new Weight(temp_weight));
+						node_list[i]->input_node = false;
+						break;
+					}
+					weight_add_flag = false;
+					toggle_end = true;
+					break;
+			}
+
+
+
+			//node clickde(down): either drag(move) or add weight(toggle)
+			//prepare for toggle || start of drag
+			for(int i=0; i<node_list.size(); i++)
+			{
+				if(node_list[i]->isIn(xpos,ypos))
+				{
+					SetCapture(hWnd);
+					node_move_flag = true;
+					node_list[i]->LDown();
+					node_idx = i;
+					break;
+				}
+			}
+			 
+
+			break;
+		}
+
+
+		case WM_LBUTTONUP:
+		{
+			if(!toggle_end)
+			{
+				xpos = GET_X_LPARAM(lParam);
+				ypos = GET_Y_LPARAM(lParam);
+
+				//node add button clicked(down)
+				//start of toggle
+				if(node_button.isIn(xpos,ypos) && !node_move_flag)
+				{
+					node_add_flag = node_button.LUp();
+					if(node_add_flag)
+						node_list.push_back(new Node(xpos,ypos));
+					node_button.LUp();
+					break;
+				}
+				node_button.LUp();
+
+
+				//add wieght
+				//start of toggle
+				if(!node_moved)
+				{
+					ReleaseCapture();
+					node_move_flag = false;
+					cout << "111" << endl;
+					for(int i=0; i<node_list.size(); i++)
+						if(node_list[i]->isIn(xpos,ypos))
+							if(node_list[i]->LUp())
+							{
+								weight_add_flag = true;
+								temp_weight = Weight(node_list[i]);
+								temp_weight.setDXDY(xpos,ypos);
+								break;
+							}
+							break;
+				}
+
+				//end of drag
+				if(node_move_flag)
+				{
+					cout << "222" << endl;
+					ReleaseCapture();
+					node_moved = false;
+					node_move_flag = false;
+				}
+
+				for(int i=0; i<node_list.size(); i++)
+					node_list[i]->LUp();
+			}
+			else
+				toggle_end = false;
+			break;
+		}
+
+		case WM_RBUTTONDOWN:
+		{
+			if(!toggle_end && !node_add_flag && !node_move_flag && !weight_add_flag)
+			{
+				xpos = GET_X_LPARAM(lParam);
+				ypos = GET_Y_LPARAM(lParam);
+
+				for(int i=0; i<node_list.size(); i++)
+				{
+					if(node_list[i]->isIn(xpos,ypos))
+					{
+						node_list[i]->RDown();
+						node_idx = i;
+
+						HMENU hPopupMenu = CreatePopupMenu();
+						Rect rect;
+						AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_PLOT_INPUT, (LPCWSTR)L"Plot as input");
+						AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_PLOT_OUTPUT, (LPCWSTR)L"Plot as output");
+						if(GetWindowRect(hWnd,(LPRECT)&rect))
+							TrackPopupMenu(hPopupMenu, 
+								TPM_RIGHTBUTTON | TPM_TOPALIGN | TPM_LEFTALIGN, 
+								xpos+rect.GetLeft()+8, ypos+rect.GetTop()+29, 0, 
+								hWnd, NULL);
+						break;
+					}
+				}
+
+			}
+			break;
+		}
+
+
+		case WM_RBUTTONUP:
+		{
+			xpos = GET_X_LPARAM(lParam);
+			ypos = GET_Y_LPARAM(lParam);
+			for(int i=0; i<node_list.size(); i++)
+				node_list[i]->RUp();
+			break;
+		}
+
+
+		case WM_MOUSEMOVE:
+		{
+			xpos = GET_X_LPARAM(lParam);
+			ypos = GET_Y_LPARAM(lParam);
+			//cout << "x: " << xpos << "  y: "<< ypos << endl;
+			if( xpos<=0+MARGIN || ypos<=0+MARGIN || xpos>=WIDTH-1-MARGIN || ypos>=HEIGHT-1-MARGIN )
 			{
 				ReleaseCapture();
+				cout << "leave!!" << endl;
 				node_move_flag = false;
-				cout << "111" << endl;
-				for(int i=0; i<node_list.size(); i++)
-					if(node_list[i]->isIn(xpos,ypos))
-						if(node_list[i]->LUp())
-						{
-							weight_add_flag = true;
-							temp_weight = Weight(node_list[i]);
-							temp_weight.setDXDY(xpos,ypos);
-							break;
-						}
-				break;
 			}
-
-			//end of drag
+			if(node_add_flag)
+			{
+				node_list[node_list.size()-1]->setXY(xpos,ypos);
+			}
 			if(node_move_flag)
 			{
-				cout << "222" << endl;
-				ReleaseCapture();
-				node_moved = false;
-				node_move_flag = false;
+				node_list[node_idx]->setXY(xpos,ypos);
+				for(int i=0; i<node_list[node_idx]->weight_list.size(); i++)
+					node_list[node_idx]->weight_list[i]->setDXDY(node_list[node_idx]->getX(),node_list[node_idx]->getY());
+				for(int i=0; i<node_list.size(); i++)
+					for(int j=0; j<node_list[i]->weight_list.size(); j++)
+						if(node_list[i]->weight_list[j]->getSrc() == node_list[node_idx])
+							node_list[i]->weight_list[j]->setSXSY(node_list[node_idx]->getX(),node_list[node_idx]->getY());
+				node_moved = true;
 			}
-
-			for(int i=0; i<node_list.size(); i++)
-				node_list[i]->LUp();
+			if(weight_add_flag)
+			{
+				temp_weight.setDXDY(xpos,ypos);
+			}
+			break;
 		}
-		else
-			toggle_end = false;
-		break;
 
-
-	case WM_RBUTTONDOWN:
-	{
-		xpos = GET_X_LPARAM(lParam);
-		ypos = GET_Y_LPARAM(lParam);
-		
-		HMENU hPopupMenu = CreatePopupMenu();
-		Rect rect;
-		//AppendMenuW(hPopupMenu, MF_STRING, 0, L"New");
-		InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, UINT(hPopupMenu), (LPCWSTR)L"Exit");
-		InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, UINT(hPopupMenu), (LPCWSTR)L"Play");
-		//SetForegroundWindow(hWnd);
-		if(GetWindowRect(hWnd,(LPRECT)&rect))
-			TrackPopupMenu(hPopupMenu, TPM_RIGHTBUTTON | TPM_TOPALIGN | TPM_LEFTALIGN
-			/*TPM_BOTTOMALIGN | TPM_LEFTALIGN*/, xpos+rect.GetLeft()+8, ypos+rect.GetTop()+29, 0, hWnd, NULL);
-		break;
-	}
-
-
-	case WM_RBUTTONUP:
-		xpos = GET_X_LPARAM(lParam);
-		ypos = GET_Y_LPARAM(lParam);
-		break;
-
-
-	case WM_MOUSEMOVE:
-		xpos = GET_X_LPARAM(lParam);
-		ypos = GET_Y_LPARAM(lParam);
-		//cout << "x: " << xpos << "  y: "<< ypos << endl;
-		if( xpos<=0+MARGIN || ypos<=0+MARGIN || xpos>=WIDTH-1-MARGIN || ypos>=HEIGHT-1-MARGIN )
+		case WM_COMMAND:
 		{
-			ReleaseCapture();
-			cout << "leave!!" << endl;
-			node_move_flag = false;
+			case IDM_PLOT_INPUT:
+				break;
+			case IDM_PLOT_OUTPUT:
+				break;
+
+			break;
 		}
-		if(node_add_flag)
-		{
-			node_list[node_list.size()-1]->setXY(xpos,ypos);
-		}
-		if(node_move_flag)
-		{
-			node_list[node_idx]->setXY(xpos,ypos);
-			for(int i=0; i<node_list[node_idx]->weight_list.size(); i++)
-				node_list[node_idx]->weight_list[i]->setDXDY(node_list[node_idx]->getX(),node_list[node_idx]->getY());
-			for(int i=0; i<node_list.size(); i++)
-				for(int j=0; j<node_list[i]->weight_list.size(); j++)
-					if(node_list[i]->weight_list[j]->getSrc() == node_list[node_idx])
-						node_list[i]->weight_list[j]->setSXSY(node_list[node_idx]->getX(),node_list[node_idx]->getY());
-			node_moved = true;
-		}
-		if(weight_add_flag)
-		{
-			temp_weight.setDXDY(xpos,ypos);
-		}
-		break;
 
 
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		break;
+		case WM_DESTROY:
+		{
+			PostQuitMessage(0);
+			break;
+		}
 	}
 	return DefWindowProc(hWnd, iMsg, wParam, lParam);
 }
@@ -367,7 +413,7 @@ void OnPaintA(HDC hdc, int ID, int x, int y, double alpha)
 		1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 0.0f, alpha, 0.0f,
+		0.0f, 0.0f, 0.0f, (Gdiplus::REAL)alpha, 0.0f,
 		0.0f, 0.0f, 0.0f, 0.0f, 1.0f
 	};
 
@@ -390,6 +436,6 @@ void OnPaintA(HDC hdc, int ID, int x, int y, double alpha)
 	pStream->Release();
 	if (I.GetLastStatus() != Ok) return;
 
-	RectF destination(0, 0, I.GetWidth(), I.GetHeight());
-	G.DrawImage(&I, destination, x, y, I.GetWidth(), I.GetHeight(), UnitPixel, &ImgAttr);
+	RectF destination(0, 0, (Gdiplus::REAL)I.GetWidth(), (Gdiplus::REAL)I.GetHeight());
+	G.DrawImage(&I, destination, x, y, (Gdiplus::REAL)I.GetWidth(), (Gdiplus::REAL)I.GetHeight(), UnitPixel, &ImgAttr);
 }

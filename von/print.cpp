@@ -1,4 +1,4 @@
-#include <Windows.h>
+#include "print.h"
 
 void EllipseLine(HDC hdc, int x, int y, int r, int d, COLORREF color, COLORREF bg)
 {

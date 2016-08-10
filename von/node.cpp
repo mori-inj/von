@@ -1,11 +1,13 @@
 #include "node.h"
 #include "weight.h"
 #include "print.h"
+#include "function.h"
 
 
 Node::Node(int x, int y)
 {
 	r = 25;
+	input_node = true;
 	this->x = x;
 	this->y = y;
 }
@@ -37,21 +39,7 @@ void Node::printWeight(HDC hdc)
 }
 void Node::print(HDC hdc)
 {
-	
-	HPEN hPen,oldPen;
-	HBRUSH hBrush, oldBrush;
-
-	EllipseLine(hdc, x,y,r,1,WHITE, BLACK);
-
-	hPen = CreatePen(PS_SOLID, 2, WHITE);
-	oldPen = (HPEN)SelectObject(hdc, hPen);
-	hBrush = CreateSolidBrush(BLACK);
-	oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
-
-	SelectObject(hdc, oldPen);
-	DeleteObject(hPen);
-	SelectObject(hdc, oldBrush);
-	DeleteObject(hBrush);
+	EllipseLine(hdc, x,y,r,1,input_node?YELLOW:WHITE, BLACK);
 }
 bool Node::isIn(int x, int y)
 {
@@ -88,4 +76,20 @@ bool Node::RUp()
 		return true;
 	}
 	return false;
+}
+
+void Node::get_input(long double input)
+{
+	this->input = input;
+}
+
+long double Node::get_output()
+{
+	long double sum = 0;
+	for(int i=0; i<weight_list.size(); i++)
+	{
+		sum += ( weight_list[i]->getSrc()->get_output() ) * ( weight_list[i]->getW() );
+	}
+
+	return sigmoid(sum);
 }
