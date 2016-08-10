@@ -13,8 +13,9 @@ class Node : public Button
 private:
 	int x, y,r;
 	bool lclicked, rclicked;
-
+	long double input;
 public:
+	bool input_node;
 	vector<Weight*> weight_list;
 	Node(){};
 	Node(int x, int y);
@@ -29,6 +30,8 @@ public:
 	bool LUp();
 	void RDown();
 	bool RUp();
+	void get_input(long double input);
+	long double get_output();
 };
 
 #endif

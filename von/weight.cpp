@@ -128,12 +128,12 @@ void Weight::print(HDC hdc)
 	{
 		if(dst==NULL)
 		{
-			int arrow_endx = dstx + (10)*dx/d;
-			int arrow_endy = dsty + (10)*dy/d;
-			int left_halfx = arrow_endx + 7*dy/d;
-			int left_halfy = arrow_endy - 7*dx/d;
-			int right_halfx = arrow_endx - 7*dy/d;
-			int right_halfy = arrow_endy + 7*dx/d;
+			int arrow_endx = (int)dstx + (10)*dx/d;
+			int arrow_endy = (int)dsty + (10)*dy/d;
+			int left_halfx = (int)arrow_endx + 7*dy/d;
+			int left_halfy = (int)arrow_endy - 7*dx/d;
+			int right_halfx = (int)arrow_endx - 7*dy/d;
+			int right_halfy = (int)arrow_endy + 7*dx/d;
 
 			MoveToEx(hdc, left_halfx, left_halfy, NULL);
 			LineTo(hdc,dstx,dsty);
@@ -143,12 +143,12 @@ void Weight::print(HDC hdc)
 		}
 		else
 		{
-			int arrow_endx = dstx + (10+dst->getR())*dx/d;
-			int arrow_endy = dsty + (10+dst->getR())*dy/d;
-			int left_halfx = arrow_endx + 7*dy/d;
-			int left_halfy = arrow_endy - 7*dx/d;
-			int right_halfx = arrow_endx - 7*dy/d;
-			int right_halfy = arrow_endy + 7*dx/d;
+			int arrow_endx = (int)dstx + (10+dst->getR())*dx/d;
+			int arrow_endy = (int)dsty + (10+dst->getR())*dy/d;
+			int left_halfx = (int)arrow_endx + 7*dy/d;
+			int left_halfy = (int)arrow_endy - 7*dx/d;
+			int right_halfx = (int)arrow_endx - 7*dy/d;
+			int right_halfy = (int)arrow_endy + 7*dx/d;
 	
 			MoveToEx(hdc, left_halfx, left_halfy, NULL);
 			LineTo(hdc,dstx+(dst->getR()*dx/d),dsty+(dst->getR()*dy/d));
