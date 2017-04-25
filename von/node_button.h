@@ -1,10 +1,10 @@
 #ifndef __NODE_BUTTON__
 #define __NODE_BUTTON__
 
-#include "node.h"
+#include "button.h"
 
 
-class NodeButton : public Node
+class NodeButton : public Button
 {
 private:
 	int x, y,r;

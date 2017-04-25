@@ -3,18 +3,29 @@
 
 
 #include <Windows.h>
+#include "coord.h"
 
 class Button
 {
-private:
-	bool clicked;
+protected:
+	bool lclicked, rclicked;
+	Coord<int> pos;
+	int r;
 public:
-	void print(HDC hdc);
+	Button(){};
+	Button(int x, int y);
+
 	bool isIn(int x, int y);
+	Coord<int> getXY();
+	int getR();
+	void setXY(int x, int y);
+
 	void LDown();
-	void LUp();
+	bool LUp();
 	void RDown();
-	void RUp();
+	bool RUp();
+
+	void print(HDC hdc);
 };
 
 

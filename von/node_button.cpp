@@ -2,7 +2,7 @@
 #include "print.h"
 
 
-NodeButton::NodeButton(int x, int y, int r) : Node(x,y)
+NodeButton::NodeButton(int x, int y, int r) : Button(x,y)
 {
 	this->x = x;
 	this->y = y;

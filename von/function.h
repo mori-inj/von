@@ -9,5 +9,6 @@ long double linear(long double a, long double x);
 long double step(long double x);
 long double sigmoid(long double x);
 long double sigmoid(long double b, long double x);
+long double ReLU(long double x);
 
 #endif

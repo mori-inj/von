@@ -78,22 +78,26 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="button.cpp" />
     <ClCompile Include="function.cpp" />
     <ClCompile Include="node.cpp" />
     <ClCompile Include="node_button.cpp" />
     <ClCompile Include="plot_button.cpp" />
     <ClCompile Include="print.cpp" />
+    <ClCompile Include="temp_weight.cpp" />
     <ClCompile Include="von.cpp" />
     <ClCompile Include="weight.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="button.h" />
+    <ClInclude Include="coord.h" />
     <ClInclude Include="function.h" />
     <ClInclude Include="node.h" />
     <ClInclude Include="node_button.h" />
     <ClInclude Include="plot_button.h" />
     <ClInclude Include="print.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="temp_weight.h" />
     <ClInclude Include="weight.h" />
   </ItemGroup>
   <ItemGroup>

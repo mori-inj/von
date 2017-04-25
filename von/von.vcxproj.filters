@@ -36,6 +36,12 @@
     <ClCompile Include="function.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="button.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="temp_weight.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="button.h">
@@ -60,6 +66,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="function.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="coord.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="temp_weight.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -9,6 +9,7 @@
 #include "plot_button.h"
 #include "node.h"
 #include "weight.h"
+#include "temp_weight.h"
 
 using namespace Gdiplus;
 using namespace std;
@@ -20,7 +21,7 @@ using namespace std;
 
 
 typedef int NodeIdx;
-
+static vector<Node*> node_list;
 
 
 const int WIDTH = 800;
@@ -34,6 +35,7 @@ LPCTSTR lpszClass = TEXT("GdiPlusStart");
 void OnPaint(HDC hdc, int ID, int x, int y);
 void OnPaintA(HDC hdc, int ID, int x, int y, double alpha);
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
+int whichNodeClicked(int xpos, int ypos);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
@@ -95,17 +97,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 	RECT crt;
 
 	//HPEN hPen, oldPen;
-	static Weight temp_weight;
-	static NodeButton node_button(35,35,25);
+	static TempWeight temp_weight;
+	static NodeButton node_add_button(35,35,25);
 	static PlotButton plot_button(100,35,25);
-	static vector<Node*> node_list;
 
 	static bool node_add_flag;
 	static bool node_move_flag;
 	static bool node_moved;
 	static bool weight_add_flag;
 	static NodeIdx node_idx;
-	static bool toggle_end = false;
+	static bool mouse_move_end = false;
 
 	int xpos,ypos;
 
@@ -139,14 +140,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 			//FillRect(MemDC, &crt, hBrush);
 			SetBkColor(MemDC, RGB(255, 255, 255));
 
-			node_button.print(MemDC);
+			node_add_button.print(MemDC);
 			plot_button.print(MemDC);
 			if(weight_add_flag)
+			{
 				temp_weight.print(MemDC);
+			}
+
 			for(int i=node_list.size()-1; i>=0; i--)
-				node_list[i]->printWeight(MemDC);
+			{
+				node_list[i] -> printWeight(MemDC);
+			}
+
 			for(int i=node_list.size()-1; i>=0; i--)
-				node_list[i]->print(MemDC);
+			{
+				node_list[i] -> print(MemDC);
+			}
 
 
 
@@ -168,55 +177,51 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 			xpos = GET_X_LPARAM(lParam);
 			ypos = GET_Y_LPARAM(lParam);
 
-			//node add(toggle) and fix
-			//end of toggle
+			//node added and fix
+			//end of mouse_move
 			if(node_add_flag && !weight_add_flag)
 			{
 				node_add_flag = false;
-				toggle_end = true;
+				mouse_move_end = true;
 				break;
 			}
 
 			//node add button clicked(down)
-			//prepare for toggle
-			if(node_button.isIn(xpos,ypos) && !weight_add_flag)
+			//prepare for mouse_move
+			if(node_add_button.isIn(xpos,ypos) && !weight_add_flag)
 			{
-				node_button.LDown();
+				node_add_button.LDown();
 				break;
 			}
 
-			//weight add(toggle) and fix
-			//end of toggle
+			//weight added and fix
+			//end of mouse_move
 			if(weight_add_flag && !node_add_flag)
 			{
-				//for-loop: find dest
-				for(int i=0; i<node_list.size(); i++)
-					if(node_list[i]->isIn(xpos,ypos) && i!=node_idx)
-					{
-						temp_weight.setDst(*node_list[i]);
-						node_list[i]->weight_list.push_back(new Weight(temp_weight));
-						node_list[i]->input_node = false;
-						break;
-					}
-					weight_add_flag = false;
-					toggle_end = true;
-					break;
+				//find dest
+				int i = whichNodeClicked(xpos, ypos);
+				if(i != -1 && i!=node_idx)
+				{
+					temp_weight.setDst(*node_list[i]);
+					node_list[i]->weight_list.push_back(new Weight(temp_weight));
+					node_list[i]->input_node = false;
+				}
+				weight_add_flag = false;
+				mouse_move_end = true;
+				break;
 			}
 
 
 
-			//node clickde(down): either drag(move) or add weight(toggle)
-			//prepare for toggle || start of drag
-			for(int i=0; i<node_list.size(); i++)
+			//node clicked(down): either drag(move) or add weight(toggle)
+			//prepare for mouse_move || start of drag
+			int i = whichNodeClicked(xpos, ypos);
+			if(i != -1)
 			{
-				if(node_list[i]->isIn(xpos,ypos))
-				{
-					SetCapture(hWnd);
-					node_move_flag = true;
-					node_list[i]->LDown();
-					node_idx = i;
-					break;
-				}
+				SetCapture(hWnd);
+				node_move_flag = true;
+				node_list[i]->LDown();
+				node_idx = i;
 			}
 			 
 
@@ -226,85 +231,85 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_LBUTTONUP:
 		{
-			if(!toggle_end)
+			if(!mouse_move_end)
 			{
 				xpos = GET_X_LPARAM(lParam);
 				ypos = GET_Y_LPARAM(lParam);
 
 				//node add button clicked(down)
-				//start of toggle
-				if(node_button.isIn(xpos,ypos) && !node_move_flag)
+				//start of mouse_move
+				if(node_add_button.isIn(xpos,ypos) && !node_move_flag)
 				{
-					node_add_flag = node_button.LUp();
+					node_add_flag = node_add_button.LUp();
 					if(node_add_flag)
 						node_list.push_back(new Node(xpos,ypos));
-					node_button.LUp();
+					node_add_button.LUp();
 					break;
 				}
-				node_button.LUp();
+				node_add_button.LUp();
 
 
 				//add wieght
-				//start of toggle
+				//start of mouse_move
 				if(!node_moved)
 				{
 					ReleaseCapture();
 					node_move_flag = false;
-					cout << "111" << endl;
-					for(int i=0; i<node_list.size(); i++)
-						if(node_list[i]->isIn(xpos,ypos))
-							if(node_list[i]->LUp())
-							{
-								weight_add_flag = true;
-								temp_weight = Weight(node_list[i]);
-								temp_weight.setDXDY(xpos,ypos);
-								break;
-							}
-							break;
+					int i = whichNodeClicked(xpos, ypos);
+					if(i!=-1)
+					{
+						if(node_list[i]->LUp())
+						{
+							weight_add_flag = true;
+							temp_weight = TempWeight(node_list[i]);
+							temp_weight.setDXY(xpos,ypos);
+						}
+					}
+					break;
 				}
 
 				//end of drag
 				if(node_move_flag)
 				{
-					cout << "222" << endl;
 					ReleaseCapture();
 					node_moved = false;
 					node_move_flag = false;
 				}
 
 				for(int i=0; i<node_list.size(); i++)
+				{
 					node_list[i]->LUp();
+				}
 			}
 			else
-				toggle_end = false;
+			{
+				mouse_move_end = false;
+			}
 			break;
 		}
 
 		case WM_RBUTTONDOWN:
 		{
-			if(!toggle_end && !node_add_flag && !node_move_flag && !weight_add_flag)
+			if(!mouse_move_end && !node_add_flag && !node_move_flag && !weight_add_flag)
 			{
 				xpos = GET_X_LPARAM(lParam);
 				ypos = GET_Y_LPARAM(lParam);
 
-				for(int i=0; i<node_list.size(); i++)
+				int i = whichNodeClicked(xpos, ypos);
+				if(i!=-1)
 				{
-					if(node_list[i]->isIn(xpos,ypos))
-					{
-						node_list[i]->RDown();
-						node_idx = i;
+					node_list[i]->RDown();
+					node_idx = i;
 
-						HMENU hPopupMenu = CreatePopupMenu();
-						Rect rect;
-						AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_PLOT_INPUT, (LPCWSTR)L"Plot as input");
-						AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_PLOT_OUTPUT, (LPCWSTR)L"Plot as output");
-						if(GetWindowRect(hWnd,(LPRECT)&rect))
-							TrackPopupMenu(hPopupMenu, 
-								TPM_RIGHTBUTTON | TPM_TOPALIGN | TPM_LEFTALIGN, 
-								xpos+rect.GetLeft()+8, ypos+rect.GetTop()+29, 0, 
-								hWnd, NULL);
-						break;
-					}
+					HMENU hPopupMenu = CreatePopupMenu();
+					Rect rect;
+					AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_PLOT_INPUT, (LPCWSTR)L"Plot as input");
+					AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_PLOT_OUTPUT, (LPCWSTR)L"Plot as output");
+					if(GetWindowRect(hWnd,(LPRECT)&rect))
+						TrackPopupMenu(hPopupMenu, 
+							TPM_RIGHTBUTTON | TPM_TOPALIGN | TPM_LEFTALIGN, 
+							xpos+rect.GetLeft()+8, ypos+rect.GetTop()+29, 0, 
+							hWnd, NULL);
 				}
 
 			}
@@ -326,31 +331,32 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 		{
 			xpos = GET_X_LPARAM(lParam);
 			ypos = GET_Y_LPARAM(lParam);
-			//cout << "x: " << xpos << "  y: "<< ypos << endl;
+
+			//node를 드래그로 이동 중에 화면 밖으로 나간 경우
 			if( xpos<=0+MARGIN || ypos<=0+MARGIN || xpos>=WIDTH-1-MARGIN || ypos>=HEIGHT-1-MARGIN )
 			{
 				ReleaseCapture();
-				cout << "leave!!" << endl;
 				node_move_flag = false;
 			}
+
+			//node를 추가하기 위해 마우스를 움직이고 있는 경우, 가장 마지막에 추가된 node의 위치를 변경
 			if(node_add_flag)
 			{
 				node_list[node_list.size()-1]->setXY(xpos,ypos);
 			}
+
+			//node를 드래그로 이동 중인 경우
 			if(node_move_flag)
 			{
+				//node자체의 위치를 옮긺
 				node_list[node_idx]->setXY(xpos,ypos);
-				for(int i=0; i<node_list[node_idx]->weight_list.size(); i++)
-					node_list[node_idx]->weight_list[i]->setDXDY(node_list[node_idx]->getX(),node_list[node_idx]->getY());
-				for(int i=0; i<node_list.size(); i++)
-					for(int j=0; j<node_list[i]->weight_list.size(); j++)
-						if(node_list[i]->weight_list[j]->getSrc() == node_list[node_idx])
-							node_list[i]->weight_list[j]->setSXSY(node_list[node_idx]->getX(),node_list[node_idx]->getY());
 				node_moved = true;
 			}
+
+			//weight를 추가 중인 경우
 			if(weight_add_flag)
 			{
-				temp_weight.setDXDY(xpos,ypos);
+				temp_weight.setDXY(xpos,ypos);
 			}
 			break;
 		}
@@ -375,6 +381,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(hWnd, iMsg, wParam, lParam);
 }
 
+int whichNodeClicked(int xpos, int ypos)
+{
+	for(int i=0; i<node_list.size(); i++)
+	{
+		if(node_list[i]->isIn(xpos,ypos))
+		{
+			return i;
+		}
+	}
+	return -1;
+}
 void OnPaint(HDC hdc, int ID, int x, int y)
 {
 	Graphics G(hdc);
@@ -439,3 +456,4 @@ void OnPaintA(HDC hdc, int ID, int x, int y, double alpha)
 	RectF destination(0, 0, (Gdiplus::REAL)I.GetWidth(), (Gdiplus::REAL)I.GetHeight());
 	G.DrawImage(&I, destination, x, y, (Gdiplus::REAL)I.GetWidth(), (Gdiplus::REAL)I.GetHeight(), UnitPixel, &ImgAttr);
 }
+

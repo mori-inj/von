@@ -27,3 +27,11 @@ long double sigmoid(long double b, long double x)
 {
 	return 1/(1+powl(e,-b*x));
 }
+
+long double ReLU(long double x)
+{
+	if(x<=0)
+		return 0;
+	else
+		return x;
+}

@@ -4,34 +4,12 @@
 #include "function.h"
 
 
-Node::Node(int x, int y)
+Node::Node(int x, int y) : Button(x,y)
 {
-	r = 25;
 	input_node = true;
-	this->x = x;
-	this->y = y;
 }
 
-void Node::setXY(int x, int y)
-{
-	this->x = x;
-	this->y = y;
-}
 
-int Node::getX()
-{
-	return x;
-}
-
-int Node::getY()
-{
-	return y;
-}
-
-int Node::getR()
-{
-	return r;
-}
 void Node::printWeight(HDC hdc)
 {
 	for(int i=0; i<weight_list.size(); i++)
@@ -39,44 +17,9 @@ void Node::printWeight(HDC hdc)
 }
 void Node::print(HDC hdc)
 {
-	EllipseLine(hdc, x,y,r,1,input_node?YELLOW:WHITE, BLACK);
-}
-bool Node::isIn(int x, int y)
-{
-	if( (x-this->x)*(x-this->x)+(y-this->y)*(y-this->y) <= r*r)
-	{
-		return true;
-	}
-	return false;
+	EllipseLine(hdc, pos.x, pos.y, r, 1, input_node?YELLOW:WHITE, BLACK);
 }
 
-void Node::LDown()
-{
-	lclicked = true;
-}
-bool Node::LUp()
-{
-	if(lclicked)
-	{
-		lclicked = false;
-		return true;
-	}
-	return false;
-}
-
-void Node::RDown()
-{
-	rclicked = true;
-}
-bool Node::RUp()
-{
-	if(rclicked)
-	{
-		rclicked = false;
-		return true;
-	}
-	return false;
-}
 
 void Node::get_input(long double input)
 {

@@ -1,10 +1,10 @@
 #ifndef __PLOT_BUTTON__
 #define __PLOT_BUTTON__
 
-#include "node.h"
+#include "button.h"
 
 
-class PlotButton : public Node
+class PlotButton : public Button
 {
 private:
 	int x, y,r;

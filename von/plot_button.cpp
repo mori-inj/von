@@ -1,9 +1,10 @@
+#include <math.h>
 #include "plot_button.h"
 #include "print.h"
 
 #define PI 3.14159265358979
 
-PlotButton::PlotButton(int x, int y, int r) : Node(x,y)
+PlotButton::PlotButton(int x, int y, int r) : Button(x,y)
 {
 	this->x = x;
 	this->y = y;
