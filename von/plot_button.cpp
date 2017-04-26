@@ -6,6 +6,7 @@
 
 PlotButton::PlotButton(int x, int y, int r) : Button(x,y)
 {
+	plot_mode = false;
 	this->x = x;
 	this->y = y;
 	this->r = r;
@@ -16,7 +17,10 @@ void PlotButton::print(HDC hdc)
 	HPEN hPen,oldPen;
 	HBRUSH hBrush, oldBrush;
 
-	EllipseLine(hdc, x,y,r,1,WHITE, BLACK);
+	if(plot_mode)
+		EllipseLine(hdc, x,y,r,5,BRIGHTWHITE, BLACK);
+	else
+		EllipseLine(hdc, x,y,r,1,WHITE, BLACK);
 
 	hPen = CreatePen(PS_SOLID, 1, WHITE);
 	oldPen = (HPEN)SelectObject(hdc, hPen);
@@ -24,14 +28,14 @@ void PlotButton::print(HDC hdc)
 	oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
 
 	POINT tri[3];
-	tri[0].x = x+10*cos(120*PI/180);
-	tri[0].y = y+10*sin(120*PI/180);
+	tri[0].x = (LONG)(x+10*cos(120*PI/180));
+	tri[0].y = (LONG)(y+10*sin(120*PI/180));
 
-	tri[1].x = x+10*cos(0*PI/180);
-	tri[1].y = y+10*sin(0*PI/180);
+	tri[1].x = (LONG)(x+10*cos(0*PI/180));
+	tri[1].y = (LONG)(y+10*sin(0*PI/180));
 
-	tri[2].x = x+10*cos(-120*PI/180);
-	tri[2].y = y+10*sin(-120*PI/180);
+	tri[2].x = (LONG)(x+10*cos(-120*PI/180));
+	tri[2].y = (LONG)(y+10*sin(-120*PI/180));
 
 	Polygon(hdc, tri, 3);
 

@@ -10,6 +10,7 @@ private:
 	int x, y,r;
 	bool clicked;
 public:
+	bool plot_mode;
 	PlotButton(int x, int y, int r);
 	void print(HDC hdc);
 	/*bool isIn(int x, int y);

@@ -4,7 +4,8 @@
 #include <Windows.h>
 
 
-#define WHITE RGB(255,255,255)
+#define WHITE RGB(222,222,222)
+#define BRIGHTWHITE RGB(255,255,255)
 #define BLACK RGB(0,0,0)
 #define RED RGB(255,0,0)
 #define GREEN RGB(0,255,0)

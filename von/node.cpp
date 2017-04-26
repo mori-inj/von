@@ -6,22 +6,59 @@
 
 Node::Node(int x, int y) : Button(x,y)
 {
+	bias = 0.5;
+	plot_mode = false;
 	input_node = true;
+	plot_input = false;
+	plot_output = false;
+	plot_border_output = false;
 }
 
 
 void Node::printWeight(HDC hdc)
 {
-	for(int i=0; i<weight_list.size(); i++)
+	for(int i=0; i<(int)weight_list.size(); i++)
 		weight_list[i]->print(hdc);
 }
 void Node::print(HDC hdc)
 {
-	EllipseLine(hdc, pos.x, pos.y, r, 1, input_node?YELLOW:WHITE, BLACK);
+	int size;
+	COLORREF white;
+	if (plot_mode)
+	{
+		size = 5;
+		white = BRIGHTWHITE;
+	}
+	else
+	{
+		size = 1;
+		white = WHITE;
+	}
+
+	if (plot_input)
+	{
+		EllipseLine(hdc, pos.x, pos.y, r, size, RED, BLACK);
+	}
+	else if (plot_output)
+	{
+		EllipseLine(hdc, pos.x, pos.y, r, size, GREEN, BLACK);
+	}
+	else if (plot_border_output)
+	{
+		EllipseLine(hdc, pos.x, pos.y, r, size, CYAN, BLACK);
+	}
+	else if (input_node)
+	{
+		EllipseLine(hdc, pos.x, pos.y, r, size, YELLOW, BLACK);
+	}
+	else
+	{
+		EllipseLine(hdc, pos.x, pos.y, r, size, white, BLACK);
+	}
 }
 
 
-void Node::get_input(long double input)
+void Node::set_input(long double input)
 {
 	this->input = input;
 }
@@ -29,10 +66,13 @@ void Node::get_input(long double input)
 long double Node::get_output()
 {
 	long double sum = 0;
-	for(int i=0; i<weight_list.size(); i++)
+	if(weight_list.size()==0)
+		return this->input;
+
+	for(int i=0; i<(int)weight_list.size(); i++)
 	{
 		sum += ( weight_list[i]->getSrc()->get_output() ) * ( weight_list[i]->getW() );
 	}
-
-	return sigmoid(sum);
+	sum += bias;
+	return sigmoid(10,sum);
 }

@@ -39,12 +39,12 @@ void TempWeight::print(HDC hdc)
 	long double d = (int)sqrt(dx*dx+dy*dy);
 	if(d>=1)
 	{	
-		int arrow_endx = (int)dst_pos.x + (10)*dx/d;
-		int arrow_endy = (int)dst_pos.y + (10)*dy/d;
-		int left_halfx = (int)arrow_endx + 7*dy/d;
-		int left_halfy = (int)arrow_endy - 7*dx/d;
-		int right_halfx = (int)arrow_endx - 7*dy/d;
-		int right_halfy = (int)arrow_endy + 7*dx/d;
+		int arrow_endx = (int)dst_pos.x + (int)(10*dx/d);
+		int arrow_endy = (int)dst_pos.y +  (int)(10*dy/d);
+		int left_halfx = (int)arrow_endx +  (int)(7*dy/d);
+		int left_halfy = (int)arrow_endy -  (int)(7*dx/d);
+		int right_halfx = (int)arrow_endx -  (int)(7*dy/d);
+		int right_halfy = (int)arrow_endy +  (int)(7*dx/d);
 
 		MoveToEx(hdc, left_halfx, left_halfy, NULL);
 		LineTo(hdc, dst_pos.x, dst_pos.y);

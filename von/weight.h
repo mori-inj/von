@@ -13,6 +13,7 @@ protected:
 	Node* src;
 	Node* dst;
 public:
+	bool plot_mode;
 	Weight(){};
 	Weight(Node* src);
 	Weight(Weight& weight);
