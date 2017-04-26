@@ -39,7 +39,7 @@ const int MARGIN = 7;
 
 HINSTANCE g_hInst;
 HWND hWndMain;
-HWND plotWindowHwnd;
+HWND plotWindowHwnd = NULL;
 LPCTSTR lpszClass = TEXT("GdiPlusStart");
 
 void OnPaint(HDC hdc, int ID, int x, int y);
@@ -48,7 +48,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
 int whichNodeClicked(int xpos, int ypos);
 bool plot_verify(Node* idx, bool reset);
+void RefreshPlot(HWND hWnd);
+bool isSelectedNode(LPRECT select_box, Node* node);
 
+
+
+template<class it1, class it2>
+bool intersect(it1 first1, it1 last1, it2 first2, it2 last2)
+{
+	while (first1 != last1 && first2 != last2)
+	{
+		if(*first1 < *first2)
+		{
+			++first1;
+			continue;
+		}
+		if(*first2 < *first1)
+		{
+			++first2;
+			continue;
+		}
+		return true;
+	}
+	return false;
+}
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
@@ -118,6 +141,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 	RECT crt;
 
 	//HPEN hPen, oldPen;
+
 	static TempWeight temp_weight;
 	static NodeButton node_add_button(35,35,25);
 	static PlotButton plot_button(100,35,25);
@@ -128,6 +152,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 	static bool weight_add_flag;
 	static NodeIdx node_idx;
 	static bool mouse_move_end = false;
+	
+	static bool being_selected_left = false;
+	static bool is_any_selected_left = false; //this flag activates when more than zero nodes are selected
+	static RECT select_box_left;
+	static set<Node*> select_list_left;
+
+	static bool being_selected_right = false;
+	static bool is_any_selected_right = false; //this flag activates when more than zero nodes are selected
+	static RECT select_box_right;
+	static set<Node*> select_list_right;
+
+	static vector<Node*> copy_list;
+	static bool shift_down;
 
 	int xpos,ypos;
 
@@ -169,12 +206,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 				temp_weight.print(MemDC);
 			}
 
-			for(int i=node_list.size()-1; i>=0; i--)
+			for(int i=(int)node_list.size()-1; i>=0; i--)
 			{
 				node_list[i] -> printWeight(MemDC);
 			}
 
-			for(int i=node_list.size()-1; i>=0; i--)
+			for(int i=(int)node_list.size()-1; i>=0; i--)
 			{
 				node_list[i] -> print(MemDC);
 			}
@@ -196,7 +233,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 			if(ret && plot_input_count == 2 && plot_out_list.size()>0)
 				plot_button.plot_mode = true;
 			else
+			{
 				plot_button.plot_mode = false;
+				if(plotWindowHwnd!=NULL)
+					SendMessage(plotWindowHwnd, WM_CLOSE, NULL, NULL);
+			}
+
+			if(being_selected_left)
+			{
+				DrawRectangle(MemDC, &select_box_left, 2, WHITE);
+			}
+			if(being_selected_right)
+			{
+				DrawRectangle(MemDC, &select_box_right, 2, RED);
+			}
 
 
 			BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
@@ -244,13 +294,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 			//end of mouse_move
 			if(weight_add_flag && !node_add_flag)
 			{
+				RefreshPlot(hWnd);
 				//find dest
-				int i = whichNodeClicked(xpos, ypos);
-				if(i != -1 && i!=node_idx)
+				int idx = whichNodeClicked(xpos, ypos);
+				if(idx!=-1)
 				{
-					temp_weight.setDst(*node_list[i]);
-					node_list[i]->weight_list.push_back(new Weight(temp_weight));
-					node_list[i]->input_node = false;
+					for(int i=0; i<(int)node_list[idx]->weight_list.size(); i++)
+					{
+						if(node_list[idx]->weight_list[i]->getSrc() == temp_weight.getSrc())
+						{
+							idx = -1;
+							break;
+						}
+					}
+				}
+				if(idx != -1 && idx!=node_idx)
+				{
+					temp_weight.setDst(*node_list[idx]);
+					node_list[idx]->weight_list.push_back(new Weight(temp_weight));
+					node_list[idx]->input_node = false;
 				}
 				weight_add_flag = false;
 				mouse_move_end = true;
@@ -261,13 +323,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 			//node clicked(down): either drag(move) or add weight(toggle)
 			//prepare for mouse_move || start of drag
-			int i = whichNodeClicked(xpos, ypos);
-			if(i != -1)
+			int idx = whichNodeClicked(xpos, ypos);
+			if(idx != -1)
 			{
 				SetCapture(hWnd);
 				node_move_flag = true;
-				node_list[i]->LDown();
-				node_idx = i;
+				node_list[idx]->LDown();
+				node_idx = idx;
+			}
+
+			//clicked empty space
+			else if(!plot_button.isIn(xpos,ypos))
+			{
+				cout << "empty left clicked!!\n";
+				fflush(stdout);
+
+				select_list_left.clear();
+				is_any_selected_left = false;
+				being_selected_left = true;
+				select_box_left.top = select_box_left.bottom = ypos;
+				select_box_left.left = select_box_left.right = xpos;
+
+				for(int i = 0; i<(int)node_list.size(); i++)
+				{
+					node_list[i]->is_selected_left = false;
+				}
 			}
 			 
 
@@ -276,86 +356,160 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 
 		case WM_LBUTTONUP:
-		{
-			if(!mouse_move_end)
-			{
-				xpos = GET_X_LPARAM(lParam);
-				ypos = GET_Y_LPARAM(lParam);
+		{	
+			xpos = GET_X_LPARAM(lParam);
+			ypos = GET_Y_LPARAM(lParam);
 
-				//node add button clicked(down)
-				//start of mouse_move
-				if(node_add_button.isIn(xpos,ypos) && !node_move_flag)
-				{
-					node_add_flag = node_add_button.LUp();
-					if(node_add_flag)
-						node_list.push_back(new Node(xpos,ypos));
-					node_add_button.LUp();
-					break;
-				}
-				node_add_button.LUp();
-
-				if(plot_button.isIn(xpos,ypos) && plot_button.plot_mode)
-				{
-					if(plot_button.LUp())
-					{
-						
-						RECT temp;
-						GetWindowRect(hWnd, &temp);
-						plotWindowHwnd = CreateWindow(
-									L"Plot",
-									L"Plot",
-									WS_BORDER | WS_CHILD | WS_POPUPWINDOW | WS_OVERLAPPEDWINDOW,
-									temp.left - 300,
-									temp.top,
-									300,
-									300,
-									hWnd,
-									(HMENU)0,
-									g_hInst,
-									NULL
-									);
-						ShowWindow(plotWindowHwnd, SW_SHOW);
-					}
-				}
-				plot_button.LUp();
-
-
-				//add wieght
-				//start of mouse_move
-				if(!node_moved)
-				{
-					ReleaseCapture();
-					node_move_flag = false;
-					int i = whichNodeClicked(xpos, ypos);
-					if(i!=-1)
-					{
-						if(node_list[i]->LUp())
-						{
-							weight_add_flag = true;
-							temp_weight = TempWeight(node_list[i]);
-							temp_weight.setDXY(xpos,ypos);
-						}
-					}
-					break;
-				}
-
-				//end of drag
-				if(node_move_flag)
-				{
-					ReleaseCapture();
-					node_moved = false;
-					node_move_flag = false;
-				}
-
-				for(int i=0; i<node_list.size(); i++)
-				{
-					node_list[i]->LUp();
-				}
-			}
-			else
+			//mouse_move is moving mouse wihtout button clicked (==not dragging)
+			if(mouse_move_end)
 			{
 				mouse_move_end = false;
+				break;
 			}
+
+			if(being_selected_left)
+			{
+				being_selected_left = false;
+
+				for(int i = 0; i<(int)node_list.size(); i++)
+				{
+					if(isSelectedNode(&select_box_left, node_list[i]))
+					{
+						node_list[i]->is_selected_left = true;
+						is_any_selected_left = true;
+						select_list_left.insert(node_list[i]);
+					}
+				}
+
+				if(intersect(select_list_left.begin(), select_list_left.end(),
+							select_list_right.begin(), select_list_right.end()))
+				{
+					is_any_selected_left = false;
+					is_any_selected_right = false;
+					select_list_left.clear();
+					select_list_right.clear();
+					for(int i = 0; i<(int)node_list.size(); i++)
+					{
+						node_list[i]->is_selected_left = false;
+						node_list[i]->is_selected_right = false;
+					}
+					break;
+				}
+
+				if(is_any_selected_right && is_any_selected_left)
+				{
+					for(auto right : select_list_right)
+					{
+						for(auto left : select_list_left)
+						{
+							bool alreadyExists = false;
+							for(int i=0; i<(int)right->weight_list.size(); i++)
+							{
+								if(right->weight_list[i]->getSrc() == left)
+								{
+									alreadyExists = true;
+									break;
+								}
+							}
+							if(!alreadyExists)
+							{
+								right->weight_list.push_back(new Weight(left, right));
+								right->input_node = false;
+							}
+						}
+					}
+
+					is_any_selected_left = false;
+					is_any_selected_right = false;
+					select_list_left.clear();
+					select_list_right.clear();
+					for(int i = 0; i<(int)node_list.size(); i++)
+					{
+						node_list[i]->is_selected_left = false;
+						node_list[i]->is_selected_right = false;
+					}
+					break;
+				}
+				break;
+			}
+
+			//node add button clicked(down)
+			//start of mouse_move
+			if(node_add_button.isIn(xpos,ypos) && !node_move_flag)
+			{
+				RefreshPlot(hWnd);
+
+				node_add_flag = node_add_button.LUp();
+				if(node_add_flag)
+					node_list.push_back(new Node(xpos,ypos));
+				node_add_button.LUp();
+				break;
+			}
+			node_add_button.LUp();
+
+			//plot button clicked and able to plot
+			if(plot_button.isIn(xpos,ypos) && plot_button.plot_mode)
+			{
+				if(plot_button.LUp())
+				{
+					RECT temp;
+					GetWindowRect(hWnd, &temp);
+					SendMessage(plotWindowHwnd, WM_CLOSE, NULL, NULL);
+					plotWindowHwnd = CreateWindow(
+								L"Plot",
+								L"Plot",
+								WS_BORDER | WS_CHILD | WS_POPUPWINDOW | WS_OVERLAPPEDWINDOW,
+								temp.left - 300,
+								temp.top,
+								300,
+								300,
+								hWnd,
+								(HMENU)0,
+								g_hInst,
+								NULL
+								);
+					ShowWindow(plotWindowHwnd, SW_SHOW);
+				}
+			}
+			plot_button.LUp();
+
+
+			//add wieght
+			//start of mouse_move
+			if(!node_moved)
+			{
+				ReleaseCapture();
+				node_move_flag = false;
+				int idx = whichNodeClicked(xpos, ypos);
+				if(idx!=-1)
+				{
+					if(node_list[idx]->LUp())
+					{
+						RefreshPlot(hWnd);
+
+						weight_add_flag = true;
+						temp_weight = TempWeight(node_list[idx]);
+						temp_weight.setDXY(xpos,ypos);
+					}
+				}
+				break;
+			}
+
+			//end of drag
+			if(node_move_flag)
+			{
+				ReleaseCapture();
+				node_moved = false;
+				node_move_flag = false;
+			}
+
+			for(int i=0; i<node_list.size(); i++)
+			{
+				node_list[i]->LUp();
+			}
+
+
+			
 			break;
 		}
 
@@ -366,23 +520,39 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 				xpos = GET_X_LPARAM(lParam);
 				ypos = GET_Y_LPARAM(lParam);
 
-				int i = whichNodeClicked(xpos, ypos);
-				if(i!=-1)
+				int idx = whichNodeClicked(xpos, ypos);
+				if(idx != -1)
 				{
-					node_list[i]->RDown();
-					node_idx = i;
+					node_list[idx]->RDown();
+					node_idx = idx;
 
 					HMENU hPopupMenu = CreatePopupMenu();
 					Rect rect;
-					AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_PLOT_INPUT+MENU_NUM*i, (LPCWSTR)L"Plot as input");
-					AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_PLOT_OUTPUT+MENU_NUM*i, (LPCWSTR)L"Plot as output");
-					AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_PLOT_BORDER_OUTPUT+MENU_NUM*i, (LPCWSTR)L"Plot as border output");
-					AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_RESET+MENU_NUM*i, (LPCWSTR)L"Reset");
+					AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_PLOT_INPUT+MENU_NUM*idx, (LPCWSTR)L"Plot as input");
+					AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_PLOT_OUTPUT+MENU_NUM*idx, (LPCWSTR)L"Plot as output");
+					AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_PLOT_BORDER_OUTPUT+MENU_NUM*idx, (LPCWSTR)L"Plot as border output");
+					AppendMenu(hPopupMenu, MF_BYPOSITION | MF_STRING, IDM_RESET+MENU_NUM*idx, (LPCWSTR)L"Reset");
 					if(GetWindowRect(hWnd,(LPRECT)&rect))
 						TrackPopupMenu(hPopupMenu, 
 							TPM_RIGHTBUTTON | TPM_TOPALIGN | TPM_LEFTALIGN, 
 							xpos+rect.GetLeft()+8, ypos+rect.GetTop()+29, 0, 
 							hWnd, NULL);
+				}
+				else
+				{
+					cout << "empty right clicked!!\n";
+					fflush(stdout);
+
+					select_list_right.clear();
+					is_any_selected_right = false;
+					being_selected_right = true;
+					select_box_right.top = select_box_right.bottom = ypos;
+					select_box_right.left = select_box_right.right = xpos;
+
+					for(int i = 0; i<(int)node_list.size(); i++)
+					{
+						node_list[i]->is_selected_right = false;
+					}
 				}
 
 			}
@@ -397,6 +567,69 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 			for(int i=0; i<node_list.size(); i++)
 			{
 				node_list[i]->RUp();
+			}
+			if(being_selected_right)
+			{
+				being_selected_right = false;
+
+				for(int i = 0; i<(int)node_list.size(); i++)
+				{
+					if(isSelectedNode(&select_box_right, node_list[i]))
+					{
+						node_list[i]->is_selected_right = true;
+						is_any_selected_right = true;
+						select_list_right.insert(node_list[i]);
+					}
+				}
+				if(intersect(select_list_left.begin(), select_list_left.end(),
+							select_list_right.begin(), select_list_right.end()))
+				{
+					is_any_selected_left = false;
+					is_any_selected_right = false;
+					select_list_left.clear();
+					select_list_right.clear();
+					for(int i = 0; i<(int)node_list.size(); i++)
+					{
+						node_list[i]->is_selected_left = false;
+						node_list[i]->is_selected_right = false;
+					}
+					break;
+				}
+				if(is_any_selected_right && is_any_selected_left)
+				{
+					for(auto right : select_list_right)
+					{
+						for(auto left : select_list_left)
+						{
+							bool alreadyExists = false;
+							for(int i=0; i<(int)right->weight_list.size(); i++)
+							{
+								if(right->weight_list[i]->getSrc() == left)
+								{
+									alreadyExists = true;
+									break;
+								}
+							}
+							if(!alreadyExists)
+							{
+								right->weight_list.push_back(new Weight(left, right));
+								right->input_node = false;
+							}
+						}
+					}
+
+					is_any_selected_left = false;
+					is_any_selected_right = false;
+					select_list_left.clear();
+					select_list_right.clear();
+					for(int i = 0; i<(int)node_list.size(); i++)
+					{
+						node_list[i]->is_selected_left = false;
+						node_list[i]->is_selected_right = false;
+					}
+					break;
+				}
+				break;
 			}
 			break;
 		}
@@ -433,12 +666,79 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 			{
 				temp_weight.setDXY(xpos,ypos);
 			}
+
+			if(being_selected_left)
+			{
+				select_box_left.bottom = ypos;
+				select_box_left.right = xpos;
+			}
+			if(being_selected_right)
+			{
+				select_box_right.bottom = ypos;
+				select_box_right.right = xpos;
+			}
+			break;
+		}
+
+		case WM_CHAR:
+		{
+			switch(wParam)
+			{
+				case 1:
+				{
+					cout << "select all" << endl; fflush(stdout);
+					break;
+				}
+				case 3:
+				{
+					cout << "copy" << endl; fflush(stdout);
+					for(int i=0; i<(int)node_list.size(); i++)
+					{
+						if(node_list[i]->is_selected_left)
+							copy_list.push_back(node_list[i]);
+					}
+					break;
+				}
+				case 22:
+				{
+					cout << "paste" << endl; fflush(stdout);
+					for(int i=0; i<(int)copy_list.size(); i++)
+					{
+						node_list.push_back(new Node(copy_list[i]));
+					}
+
+					for(int i=0; i<(int)copy_list.size(); i++)
+					{
+						for(int j=0; j<(int)node_list.size() - ((shift_down)?0:(int)copy_list.size()); j++)
+						{
+							for(int k=0; k<(int)node_list[j]->weight_list.size(); k++)
+							{
+								if(node_list[j]->weight_list[k]->getSrc() == copy_list[i])
+								{
+									node_list[j]->weight_list.push_back(new Weight(node_list[node_list.size()-copy_list.size()+i], node_list[j]));
+								}
+							}
+
+						}
+					}
+					copy_list.clear();
+					break;
+				}
+				case 24:
+				{
+					cout << "cut" << endl; fflush(stdout);
+					break;
+				}
+			}
 			break;
 		}
 
 		case WM_COMMAND:
 		{
 			int msg = LOWORD(wParam);
+
+			RefreshPlot(hWnd);
+
 			if (msg >= IDM_PLOT_INPUT && msg%MENU_NUM==0)
 			{
 				if (plot_input_count < 2)
@@ -515,6 +815,59 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 			}
 			break;
 		}
+		case WM_KEYUP:
+		{
+			switch(wParam)
+			{
+				case VK_DELETE:
+				case VK_BACK:
+				{
+					if(is_any_selected_left)
+					{
+						for(int i=0; i<(int)node_list.size(); i++)
+						{
+							for(int j=0; j<(int)node_list[i]->weight_list.size(); j++)
+							{
+								if(node_list[i]->weight_list[j]->getSrc()->is_selected_left)
+								{
+									node_list[i]->weight_list.erase(node_list[i]->weight_list.begin()+j);
+									j--;
+								}
+							}
+						}
+						for(int i=0; i<(int)node_list.size(); i++)
+						{
+							if(node_list[i]->is_selected_left)
+							{
+								node_list.erase(node_list.begin()+i);
+								i--;
+							}
+						}
+					}
+					break;
+				}
+				case VK_SHIFT:
+				{
+					shift_down = false;
+					break;
+				}
+			}
+			break;
+		}
+
+		case WM_KEYDOWN:
+		{
+			switch(wParam)
+			{
+				case VK_SHIFT:
+				{
+					shift_down = true;
+					break;
+				}
+			}
+
+			break;
+		}
 
 
 		case WM_DESTROY:
@@ -524,6 +877,46 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 		}
 	}
 	return DefWindowProc(hWnd, iMsg, wParam, lParam);
+}
+
+bool isSelectedNode(LPRECT select_box, Node* node)
+{
+	Coord<int> pos = node->getXY();
+	int r = node->getR();
+	int left = min(select_box->left, select_box->right);
+	int right =max(select_box->left, select_box->right);
+	int top = min(select_box->top, select_box->bottom);
+	int bottom = max(select_box->top, select_box->bottom);
+
+	if(left <= pos.x - r && pos.x + r <= right
+		&& top <= pos.y - r && pos.y + r <= bottom)
+		return true;
+	return false;
+}
+
+void RefreshPlot(HWND hWnd)
+{
+	if(plotWindowHwnd!=NULL)
+	{
+		SendMessage(plotWindowHwnd, WM_TIMER, NULL, NULL);
+		//ShowWindow(plotWindowHwnd, SW_SHOW);
+		/*RECT temp;
+		GetWindowRect(hWnd, &temp);
+		plotWindowHwnd = CreateWindow(
+					L"Plot",
+					L"Plot",
+					WS_BORDER | WS_CHILD | WS_POPUPWINDOW | WS_OVERLAPPEDWINDOW,
+					temp.left - 300,
+					temp.top,
+					300,
+					300,
+					hWnd,
+					(HMENU)0,
+					g_hInst,
+					NULL
+					);
+		ShowWindow(plotWindowHwnd, SW_SHOW);*/
+	}
 }
 
 LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
@@ -542,7 +935,7 @@ LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_CREATE:
 		{
-			SetTimer(hWnd, 1, 200, 0);
+			//SetTimer(hWnd, 1, 200, 0);
 			break;
 		}
 
@@ -556,6 +949,7 @@ LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 		{
 			short temp = HIWORD(wParam);
 			zoom *= (1-(long double)temp/5000);
+			InvalidateRect(hWnd, NULL, FALSE);
 			break;
 		}
 
@@ -586,20 +980,20 @@ LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 				for(int j=0; j<size; j++)
 				{
 					input[1]->set_input(zoom*(long double)j/size - zoom/2);
-					vector<long double> out_pixel;
+					vector<long double> out_pixel(1,0);
 					vector<long double> border_out_pixel(3,0);
-					int cnt = 0;
+					int cnt_b = 0, cnt_o = 0;
 					for(auto it : plot_out_list)
 					{
 						long double out = it->get_output();
 						if(it->plot_output)
-							out_pixel.push_back(out);
+							out_pixel[cnt_o++] = out;
 						else
 						{
 							if(-4*(abs(out-0.5))+1 > 0)
-								border_out_pixel[cnt++] = -4*(abs(out-0.5))+1;
+								border_out_pixel[cnt_b++] = -4*(abs(out-0.5))+1;
 							else
-								border_out_pixel[cnt++] = 0;
+								border_out_pixel[cnt_b++] = 0;
 						}
 					}
 					COLORREF border_clr = RGB(border_out_pixel[0]*255, border_out_pixel[1]*255, border_out_pixel[2]*255);
@@ -612,7 +1006,7 @@ LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 					oldPen = (HPEN)SelectObject(MemDC, hPen);
 					MoveToEx(MemDC, 20+j, 250-i, NULL); 
 					LineTo(MemDC, 20+j+1, 250-i+1); 
-					SelectObject(hdc, oldPen);
+					SelectObject(MemDC, oldPen);
 					DeleteObject(hPen);
 				}
 			}
@@ -625,7 +1019,7 @@ LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 			LineTo(MemDC, 260, 130);
 			MoveToEx(MemDC, 140, 250, NULL); 
 			LineTo(MemDC, 140, 10);
-			SelectObject(hdc, oldPen);
+			SelectObject(MemDC, oldPen);
 			DeleteObject(hPen);
 
 

@@ -19,14 +19,19 @@ public:
 	bool plot_input;
 	bool plot_output;
 	bool plot_border_output;
+	bool is_selected_left;
+	bool is_selected_right;
 
 	//list of weights whose dst is this node
 	vector<Weight*> weight_list;
 
 	Node(){};
 	Node(int x, int y);
+	Node(Node* node);
 	void print(HDC hdc);
 	void printWeight(HDC hdc);
+	long double get_bias();
+	long double get_input();
 	void set_input(long double input);
 	long double get_output();
 };

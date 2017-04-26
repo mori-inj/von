@@ -16,5 +16,7 @@
 
 
 void EllipseLine(HDC hdc, int x, int y, int r, int d, COLORREF color, COLORREF bg);
+void EllipseLine(HDC hdc, int x, int y, int r, int d, COLORREF color, COLORREF bg, bool is_selected_left, bool is_selected_right);
+void DrawRectangle(HDC hdc, LPRECT rect, int d, COLORREF color);
 
 #endif
