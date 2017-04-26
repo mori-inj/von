@@ -9,6 +9,8 @@
 #include "print.h"
 #include "node_button.h"
 #include "plot_button.h"
+#include "input_button.h"
+#include "output_button.h"
 #include "node.h"
 #include "weight.h"
 #include "temp_weight.h"
@@ -39,13 +41,16 @@ const int MARGIN = 7;
 
 HINSTANCE g_hInst;
 HWND hWndMain;
-HWND plotWindowHwnd = NULL;
+HWND plotWindowHwnd = NULL, inputWindowHwnd = NULL, outputWindowHwnd = NULL, inputGUIWindowHwnd = NULL;
 LPCTSTR lpszClass = TEXT("GdiPlusStart");
 
 void OnPaint(HDC hdc, int ID, int x, int y);
 void OnPaintA(HDC hdc, int ID, int x, int y, double alpha);
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK WndProcInput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK WndProcOutput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
 int whichNodeClicked(int xpos, int ypos);
 bool plot_verify(Node* idx, bool reset);
 void RefreshPlot(HWND hWnd);
@@ -109,11 +114,32 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
 	RegisterClass(&WndClass);
 	//
 
+	//
+	WndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+	WndClass.lpfnWndProc = (WNDPROC)WndProcInput;
+	WndClass.lpszClassName = L"Input";
+	RegisterClass(&WndClass);
+	//
+
+	//
+	WndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+	WndClass.lpfnWndProc = (WNDPROC)WndProcInputGUI;
+	WndClass.lpszClassName = L"InputGUI";
+	RegisterClass(&WndClass);
+	//
+
+	//
+	WndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+	WndClass.lpfnWndProc = (WNDPROC)WndProcOutput;
+	WndClass.lpszClassName = L"Output";
+	RegisterClass(&WndClass);
+	//
+
 	hWnd = CreateWindow(
 		L"VoN",
 		L"VoN",
 		WS_OVERLAPPEDWINDOW,
-		GetSystemMetrics(SM_CXFULLSCREEN) / 2 - WIDTH/2,
+		GetSystemMetrics(SM_CXFULLSCREEN) / 2 - WIDTH/2 + 100,
 		GetSystemMetrics(SM_CYFULLSCREEN) / 2 - HEIGHT/2,
 		WIDTH,
 		HEIGHT,
@@ -145,6 +171,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 	static TempWeight temp_weight;
 	static NodeButton node_add_button(35,35,25);
 	static PlotButton plot_button(100,35,25);
+	static InputButton input_button(165, 35, 25);
+	static OutputButton output_button(230, 35, 25);
 
 	static bool node_add_flag;
 	static bool node_move_flag;
@@ -199,8 +227,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 			//FillRect(MemDC, &crt, hBrush);
 			SetBkColor(MemDC, RGB(255, 255, 255));
 
+			for(int i=0; i<(int)node_list.size(); i++)
+				node_list[i]->set_idx(i);
+
+			
+
 			node_add_button.print(MemDC);
 			plot_button.print(MemDC);
+			input_button.print(MemDC);
+			output_button.print(MemDC);
+
+
 			if(weight_add_flag)
 			{
 				temp_weight.print(MemDC);
@@ -230,13 +267,50 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 				bool temp  = plot_verify(it, true);
 				ret = ret && temp;
 			}
-			if(ret && plot_input_count == 2 && plot_out_list.size()>0)
+			if(ret && plot_input_count == 2 && (int)plot_out_list.size()>0)
+			{
 				plot_button.plot_mode = true;
+			}
 			else
 			{
 				plot_button.plot_mode = false;
 				if(plotWindowHwnd!=NULL)
 					SendMessage(plotWindowHwnd, WM_CLOSE, NULL, NULL);
+			}
+			int cnt = 0;
+			for(int i = 0; i<(int)node_list.size(); i++)
+			{
+				if(node_list[i]->input_node)
+					cnt++;
+			}
+			if(cnt!=2)
+			{
+				if(inputGUIWindowHwnd!=NULL)
+					SendMessage(inputGUIWindowHwnd, WM_CLOSE, NULL, NULL);
+				inputGUIWindowHwnd = NULL;
+			}
+			else
+			{
+				if(inputGUIWindowHwnd==NULL && inputWindowHwnd!=NULL)
+				{
+					RECT temp;
+					GetWindowRect(hWnd, &temp);
+					SendMessage(inputGUIWindowHwnd, WM_CLOSE, NULL, NULL);
+					inputGUIWindowHwnd = CreateWindow(
+								L"InputGUI",
+								L"Input 2D Data",
+								WS_BORDER | WS_CHILD | WS_POPUPWINDOW | WS_OVERLAPPEDWINDOW,
+								temp.left - 600,
+								temp.top + 300,
+								300,
+								300,
+								hWnd,
+								(HMENU)0,
+								g_hInst,
+								NULL
+								);
+					ShowWindow(inputGUIWindowHwnd, SW_SHOW);
+				}
 			}
 
 			if(being_selected_left)
@@ -264,6 +338,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_LBUTTONDOWN:
 		{
+			RefreshPlot(hWnd);
 			xpos = GET_X_LPARAM(lParam);
 			ypos = GET_Y_LPARAM(lParam);
 
@@ -290,11 +365,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 				break;
 			}
 
+			if(input_button.isIn(xpos, ypos) && !weight_add_flag && !node_add_flag)
+			{
+				input_button.LDown();
+				break;
+			}
+
+			if(output_button.isIn(xpos, ypos) && !weight_add_flag && !node_add_flag)
+			{
+				output_button.LDown();
+				break;
+			}
+
 			//weight added and fix
 			//end of mouse_move
 			if(weight_add_flag && !node_add_flag)
 			{
-				RefreshPlot(hWnd);
 				//find dest
 				int idx = whichNodeClicked(xpos, ypos);
 				if(idx!=-1)
@@ -357,6 +443,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_LBUTTONUP:
 		{	
+			RefreshPlot(hWnd);
 			xpos = GET_X_LPARAM(lParam);
 			ypos = GET_Y_LPARAM(lParam);
 
@@ -437,11 +524,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 			//start of mouse_move
 			if(node_add_button.isIn(xpos,ypos) && !node_move_flag)
 			{
-				RefreshPlot(hWnd);
 
 				node_add_flag = node_add_button.LUp();
+				int size = (int)node_list.size();
 				if(node_add_flag)
-					node_list.push_back(new Node(xpos,ypos));
+					node_list.push_back(new Node(xpos,ypos, size));
 				node_add_button.LUp();
 				break;
 			}
@@ -470,8 +557,95 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 								);
 					ShowWindow(plotWindowHwnd, SW_SHOW);
 				}
+				plot_button.LUp();
+				break;
 			}
 			plot_button.LUp();
+
+
+			//input button clicked
+			if(input_button.isIn(xpos, ypos))
+			{
+				if(input_button.LUp())
+				{
+					RECT temp;
+					GetWindowRect(hWnd, &temp);
+					SendMessage(inputWindowHwnd, WM_CLOSE, NULL, NULL);
+					inputWindowHwnd = CreateWindow(
+								L"Input",
+								L"Input Data",
+								WS_BORDER | WS_CHILD | WS_POPUPWINDOW | WS_OVERLAPPEDWINDOW,
+								temp.left - 300,
+								temp.top + 300,
+								300,
+								300,
+								hWnd,
+								(HMENU)0,
+								g_hInst,
+								NULL
+								);
+					ShowWindow(inputWindowHwnd, SW_SHOW);
+					
+					int cnt = 0;
+					for(int i = 0; i<(int)node_list.size(); i++)
+					{
+						if(node_list[i]->input_node)
+							cnt++;
+					}
+					if(cnt==2)
+					{
+						RECT temp;
+						GetWindowRect(hWnd, &temp);
+						SendMessage(inputGUIWindowHwnd, WM_CLOSE, NULL, NULL);
+						inputGUIWindowHwnd = CreateWindow(
+									L"InputGUI",
+									L"Input 2D Data",
+									WS_BORDER | WS_CHILD | WS_POPUPWINDOW | WS_OVERLAPPEDWINDOW,
+									temp.left - 600,
+									temp.top + 300,
+									300,
+									300,
+									hWnd,
+									(HMENU)0,
+									g_hInst,
+									NULL
+									);
+						ShowWindow(inputGUIWindowHwnd, SW_SHOW);
+					}
+				}
+				input_button.LUp();
+				break;
+			}
+			input_button.LUp();
+
+
+			//output button clicked
+			if(output_button.isIn(xpos, ypos))
+			{
+				if(output_button.LUp())
+				{
+					RECT temp;
+					GetWindowRect(hWnd, &temp);
+					SendMessage(outputWindowHwnd, WM_CLOSE, NULL, NULL);
+					outputWindowHwnd = CreateWindow(
+								L"Output",
+								L"Output",
+								WS_BORDER | WS_CHILD | WS_POPUPWINDOW | WS_OVERLAPPEDWINDOW,
+								temp.right,
+								temp.top,
+								300,
+								600,
+								hWnd,
+								(HMENU)0,
+								g_hInst,
+								NULL
+								);
+					ShowWindow(outputWindowHwnd, SW_SHOW);
+				}
+				output_button.LUp();
+				break;
+			}
+			output_button.LUp();
 
 
 			//add wieght
@@ -485,7 +659,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 				{
 					if(node_list[idx]->LUp())
 					{
-						RefreshPlot(hWnd);
 
 						weight_add_flag = true;
 						temp_weight = TempWeight(node_list[idx]);
@@ -515,6 +688,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_RBUTTONDOWN:
 		{
+			RefreshPlot(hWnd);
 			if(!mouse_move_end && !node_add_flag && !node_move_flag && !weight_add_flag)
 			{
 				xpos = GET_X_LPARAM(lParam);
@@ -562,6 +736,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_RBUTTONUP:
 		{
+			RefreshPlot(hWnd);
 			xpos = GET_X_LPARAM(lParam);
 			ypos = GET_Y_LPARAM(lParam);
 			for(int i=0; i<node_list.size(); i++)
@@ -682,6 +857,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_CHAR:
 		{
+			RefreshPlot(hWnd);
 			switch(wParam)
 			{
 				case 1:
@@ -704,7 +880,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 					cout << "paste" << endl; fflush(stdout);
 					for(int i=0; i<(int)copy_list.size(); i++)
 					{
-						node_list.push_back(new Node(copy_list[i]));
+						int size = (int)node_list.size();
+						node_list.push_back(new Node(copy_list[i], size));
+						if(select_list_left.find(copy_list[i]) != select_list_left.end())
+							select_list_left.insert(node_list[node_list.size()-1]);
 					}
 
 					for(int i=0; i<(int)copy_list.size(); i++)
@@ -735,9 +914,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_COMMAND:
 		{
-			int msg = LOWORD(wParam);
-
 			RefreshPlot(hWnd);
+			int msg = LOWORD(wParam);
 
 			if (msg >= IDM_PLOT_INPUT && msg%MENU_NUM==0)
 			{
@@ -817,6 +995,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 		}
 		case WM_KEYUP:
 		{
+			RefreshPlot(hWnd);
 			switch(wParam)
 			{
 				case VK_DELETE:
@@ -839,6 +1018,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 						{
 							if(node_list[i]->is_selected_left)
 							{
+								if(node_list[i]->plot_input)
+								{
+									plot_in_list.erase(node_list[i]);
+									plot_input_count--;
+								}
+								if(node_list[i]->plot_output || node_list[i]->plot_border_output)
+								{
+									plot_out_list.erase(node_list[i]);
+								}
+								
 								node_list.erase(node_list.begin()+i);
 								i--;
 							}
@@ -857,6 +1046,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_KEYDOWN:
 		{
+			RefreshPlot(hWnd);
 			switch(wParam)
 			{
 				case VK_SHIFT:
@@ -1037,6 +1227,214 @@ LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 		case WM_DESTROY:
 		{
 			plotWindowHwnd = NULL;
+			break;
+		}
+	}
+	return DefWindowProc(hWnd, iMsg, wParam, lParam);
+}
+
+LRESULT CALLBACK WndProcInput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
+{
+	HDC hdc, MemDC;
+	PAINTSTRUCT ps;
+
+	HBITMAP hBit, OldBit;
+	RECT crt;
+
+	HPEN hPen, oldPen;
+
+	switch(iMsg)
+	{
+		case WM_CREATE:
+		{
+			//SetTimer(hWnd, 1, 200, 0);
+			break;
+		}
+
+		case WM_TIMER:
+		{
+			InvalidateRect(hWnd, NULL, FALSE);
+			break;
+		}
+
+		case WM_PAINT:
+		{
+			hdc = BeginPaint(hWnd, &ps);
+			GetClientRect(hWnd, &crt);
+
+			MemDC = CreateCompatibleDC(hdc);
+			hBit = CreateCompatibleBitmap(hdc, crt.right, crt.bottom);
+			OldBit = (HBITMAP)SelectObject(MemDC, hBit);
+			//hBrush = CreateSolidBrush(RGB(255, 255, 255));
+			//oldBrush = (HBRUSH)SelectObject(MemDC, hBrush);
+			//hPen = CreatePen(PS_SOLID, 5, RGB(255, 255, 255));
+			//oldPen = (HPEN)SelectObject(MemDC, hPen);
+
+			//FillRect(MemDC, &crt, hBrush);
+			SetBkColor(MemDC, RGB(255, 255, 255));
+
+			
+
+
+			BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
+			SelectObject(MemDC, OldBit);
+			DeleteDC(MemDC);
+			//SelectObject(MemDC, oldPen);
+			//DeleteObject(hPen);
+			//SelectObject(MemDC, oldBrush);
+			//DeleteObject(hBrush);
+			DeleteObject(hBit);
+			EndPaint(hWnd, &ps);
+			break;
+		}
+		case WM_DESTROY:
+		{
+			inputWindowHwnd = NULL;
+			break;
+		}
+	}
+	return DefWindowProc(hWnd, iMsg, wParam, lParam);
+}
+
+LRESULT CALLBACK WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
+{
+	HDC hdc, MemDC;
+	PAINTSTRUCT ps;
+
+	HBITMAP hBit, OldBit;
+	RECT crt;
+
+	HPEN hPen, oldPen;
+
+	static long double zoom = 10;
+
+	switch(iMsg)
+	{
+		case WM_CREATE:
+		{
+			//SetTimer(hWnd, 1, 200, 0);
+			break;
+		}
+
+		case WM_TIMER:
+		{
+			InvalidateRect(hWnd, NULL, FALSE);
+			break;
+		}
+
+		case WM_MOUSEWHEEL:
+		{
+			short temp = HIWORD(wParam);
+			zoom *= (1-(long double)temp/5000);
+			InvalidateRect(hWnd, NULL, FALSE);
+			break;
+		}
+
+		case WM_PAINT:
+		{
+			hdc = BeginPaint(hWnd, &ps);
+			GetClientRect(hWnd, &crt);
+
+			MemDC = CreateCompatibleDC(hdc);
+			hBit = CreateCompatibleBitmap(hdc, crt.right, crt.bottom);
+			OldBit = (HBITMAP)SelectObject(MemDC, hBit);
+			//hBrush = CreateSolidBrush(RGB(255, 255, 255));
+			//oldBrush = (HBRUSH)SelectObject(MemDC, hBrush);
+			//hPen = CreatePen(PS_SOLID, 5, RGB(255, 255, 255));
+			//oldPen = (HPEN)SelectObject(MemDC, hPen);
+
+			//FillRect(MemDC, &crt, hBrush);
+			SetBkColor(MemDC, RGB(255, 255, 255));
+
+			
+
+
+			//draw axis
+			hPen = CreatePen(PS_SOLID, 2, RGB(255,255,255));
+			oldPen = (HPEN)SelectObject(MemDC, hPen);
+			MoveToEx(MemDC, 20, 130, NULL); 
+			LineTo(MemDC, 260, 130);
+			MoveToEx(MemDC, 140, 250, NULL); 
+			LineTo(MemDC, 140, 10);
+			SelectObject(MemDC, oldPen);
+			DeleteObject(hPen);
+
+			BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
+			SelectObject(MemDC, OldBit);
+			DeleteDC(MemDC);
+			//SelectObject(MemDC, oldPen);
+			//DeleteObject(hPen);
+			//SelectObject(MemDC, oldBrush);
+			//DeleteObject(hBrush);
+			DeleteObject(hBit);
+			EndPaint(hWnd, &ps);
+			break;
+		}
+		case WM_DESTROY:
+		{
+			inputGUIWindowHwnd = NULL;
+			break;
+		}
+	}
+	return DefWindowProc(hWnd, iMsg, wParam, lParam);
+}
+
+LRESULT CALLBACK WndProcOutput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
+{
+	HDC hdc, MemDC;
+	PAINTSTRUCT ps;
+
+	HBITMAP hBit, OldBit;
+	RECT crt;
+
+	HPEN hPen, oldPen;
+
+	switch(iMsg)
+	{
+		case WM_CREATE:
+		{
+			//SetTimer(hWnd, 1, 200, 0);
+			break;
+		}
+
+		case WM_TIMER:
+		{
+			InvalidateRect(hWnd, NULL, FALSE);
+			break;
+		}
+
+		case WM_PAINT:
+		{
+			hdc = BeginPaint(hWnd, &ps);
+			GetClientRect(hWnd, &crt);
+
+			MemDC = CreateCompatibleDC(hdc);
+			hBit = CreateCompatibleBitmap(hdc, crt.right, crt.bottom);
+			OldBit = (HBITMAP)SelectObject(MemDC, hBit);
+			//hBrush = CreateSolidBrush(RGB(255, 255, 255));
+			//oldBrush = (HBRUSH)SelectObject(MemDC, hBrush);
+			//hPen = CreatePen(PS_SOLID, 5, RGB(255, 255, 255));
+			//oldPen = (HPEN)SelectObject(MemDC, hPen);
+
+			//FillRect(MemDC, &crt, hBrush);
+			SetBkColor(MemDC, RGB(255, 255, 255));
+
+
+
+			BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
+			SelectObject(MemDC, OldBit);
+			DeleteDC(MemDC);
+			//SelectObject(MemDC, oldPen);
+			//DeleteObject(hPen);
+			//SelectObject(MemDC, oldBrush);
+			//DeleteObject(hBrush);
+			DeleteObject(hBit);
+			EndPaint(hWnd, &ps);
+			break;
+		}
+		case WM_DESTROY:
+		{
+			outputWindowHwnd = NULL;
 			break;
 		}
 	}

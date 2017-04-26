@@ -42,6 +42,12 @@
     <ClCompile Include="temp_weight.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="input_button.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="output_button.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="button.h">
@@ -72,6 +78,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="temp_weight.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="input_button.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="output_button.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -14,6 +14,7 @@ private:
 	long double input;
 	long double bias;
 public:
+	int idx;
 	bool plot_mode;
 	bool input_node;
 	bool plot_input;
@@ -26,10 +27,11 @@ public:
 	vector<Weight*> weight_list;
 
 	Node(){};
-	Node(int x, int y);
-	Node(Node* node);
+	Node(int x, int y, int idx);
+	Node(Node* node, int idx);
 	void print(HDC hdc);
 	void printWeight(HDC hdc);
+	void set_idx(int idx);
 	long double get_bias();
 	long double get_input();
 	void set_input(long double input);
