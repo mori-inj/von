@@ -14,6 +14,7 @@ protected:
 public:
 	Button(){};
 	Button(int x, int y);
+	Button(int x, int y, int r);
 
 	bool isIn(int x, int y);
 	Coord<int> getXY();

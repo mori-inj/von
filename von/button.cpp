@@ -8,6 +8,13 @@ Button::Button(int x, int y)
 	this->pos.y = y;
 }
 
+Button::Button(int x, int y, int r)
+{
+	this->r = r;
+	this->pos.x = x;
+	this->pos.y = y;
+}
+
 void Button::setXY(int x, int y)
 {
 	this->pos.x = x;

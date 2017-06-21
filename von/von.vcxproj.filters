@@ -48,6 +48,12 @@
     <ClCompile Include="output_button.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="gui_set_class_button.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="input_data.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="button.h">
@@ -84,6 +90,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="output_button.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gui_set_class_button.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="input_data.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

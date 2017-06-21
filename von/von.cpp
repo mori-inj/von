@@ -11,9 +11,11 @@
 #include "plot_button.h"
 #include "input_button.h"
 #include "output_button.h"
+#include "gui_set_class_button.h"
 #include "node.h"
 #include "weight.h"
 #include "temp_weight.h"
+#include "input_data.h"
 
 using namespace Gdiplus;
 using namespace std;
@@ -29,6 +31,8 @@ using namespace std;
 
 typedef int NodeIdx;
 static vector<Node*> node_list;
+static vector<InputData*> input_data_list;
+static set<InputData*> input_data_set[2];
 
 static set<Node*> plot_in_list;
 static set<Node*> plot_out_list;
@@ -53,7 +57,7 @@ LRESULT CALLBACK WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lPa
 LRESULT CALLBACK WndProcOutput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
 int whichNodeClicked(int xpos, int ypos);
 bool plot_verify(Node* idx, bool reset);
-void RefreshPlot(HWND hWnd);
+void RefreshPlot();
 bool isSelectedNode(LPRECT select_box, Node* node);
 
 
@@ -277,19 +281,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 				if(plotWindowHwnd!=NULL)
 					SendMessage(plotWindowHwnd, WM_CLOSE, NULL, NULL);
 			}
+
 			int cnt = 0;
 			for(int i = 0; i<(int)node_list.size(); i++)
 			{
 				if(node_list[i]->input_node)
 					cnt++;
 			}
-			if(cnt!=2)
-			{
-				if(inputGUIWindowHwnd!=NULL)
-					SendMessage(inputGUIWindowHwnd, WM_CLOSE, NULL, NULL);
-				inputGUIWindowHwnd = NULL;
-			}
-			else
+			if(cnt==2)
 			{
 				if(inputGUIWindowHwnd==NULL && inputWindowHwnd!=NULL)
 				{
@@ -312,6 +311,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 					ShowWindow(inputGUIWindowHwnd, SW_SHOW);
 				}
 			}
+			/*else
+			{
+				if(inputGUIWindowHwnd!=NULL)
+					SendMessage(inputGUIWindowHwnd, WM_CLOSE, NULL, NULL);
+				inputGUIWindowHwnd = NULL;
+			}*/
 
 			if(being_selected_left)
 			{
@@ -338,13 +343,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_LBUTTONDOWN:
 		{
-			RefreshPlot(hWnd);
+			RefreshPlot();
 			xpos = GET_X_LPARAM(lParam);
 			ypos = GET_Y_LPARAM(lParam);
 
 			//node added and fix
 			//end of mouse_move
-			if(node_add_flag && !weight_add_flag)
+			if(node_add_flag /*&& !weight_add_flag*/)
 			{
 				node_add_flag = false;
 				mouse_move_end = true;
@@ -443,7 +448,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_LBUTTONUP:
 		{	
-			RefreshPlot(hWnd);
+			RefreshPlot();
 			xpos = GET_X_LPARAM(lParam);
 			ypos = GET_Y_LPARAM(lParam);
 
@@ -524,7 +529,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 			//start of mouse_move
 			if(node_add_button.isIn(xpos,ypos) && !node_move_flag)
 			{
-
 				node_add_flag = node_add_button.LUp();
 				int size = (int)node_list.size();
 				if(node_add_flag)
@@ -659,7 +663,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 				{
 					if(node_list[idx]->LUp())
 					{
-
 						weight_add_flag = true;
 						temp_weight = TempWeight(node_list[idx]);
 						temp_weight.setDXY(xpos,ypos);
@@ -688,7 +691,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_RBUTTONDOWN:
 		{
-			RefreshPlot(hWnd);
+			RefreshPlot();
 			if(!mouse_move_end && !node_add_flag && !node_move_flag && !weight_add_flag)
 			{
 				xpos = GET_X_LPARAM(lParam);
@@ -736,7 +739,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_RBUTTONUP:
 		{
-			RefreshPlot(hWnd);
+			RefreshPlot();
 			xpos = GET_X_LPARAM(lParam);
 			ypos = GET_Y_LPARAM(lParam);
 			for(int i=0; i<node_list.size(); i++)
@@ -857,7 +860,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_CHAR:
 		{
-			RefreshPlot(hWnd);
+			RefreshPlot();
 			switch(wParam)
 			{
 				case 1:
@@ -914,7 +917,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_COMMAND:
 		{
-			RefreshPlot(hWnd);
+			RefreshPlot();
 			int msg = LOWORD(wParam);
 
 			if (msg >= IDM_PLOT_INPUT && msg%MENU_NUM==0)
@@ -995,7 +998,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 		}
 		case WM_KEYUP:
 		{
-			RefreshPlot(hWnd);
+			RefreshPlot();
 			switch(wParam)
 			{
 				case VK_DELETE:
@@ -1046,7 +1049,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_KEYDOWN:
 		{
-			RefreshPlot(hWnd);
+			RefreshPlot();
 			switch(wParam)
 			{
 				case VK_SHIFT:
@@ -1084,7 +1087,7 @@ bool isSelectedNode(LPRECT select_box, Node* node)
 	return false;
 }
 
-void RefreshPlot(HWND hWnd)
+void RefreshPlot()
 {
 	if(plotWindowHwnd!=NULL)
 	{
@@ -1166,10 +1169,10 @@ LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 			const int size = 240;
 			for(int i=0; i<size; i++)
 			{
-				input[0]->set_input(zoom*(long double)i/size - zoom/2);
+				input[0]->set_input(zoom*(long double)i/size - zoom/2.0);
 				for(int j=0; j<size; j++)
 				{
-					input[1]->set_input(zoom*(long double)j/size - zoom/2);
+					input[1]->set_input(zoom*(long double)j/size - zoom/2.0);
 					vector<long double> out_pixel(1,0);
 					vector<long double> border_out_pixel(3,0);
 					int cnt_b = 0, cnt_o = 0;
@@ -1201,6 +1204,10 @@ LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 				}
 			}
 
+			for(int i=0; i<(int)input_data_list.size(); i++)
+			{
+				input_data_list[i]->print(MemDC, zoom);
+			}
 
 			//draw axis
 			hPen = CreatePen(PS_SOLID, 2, RGB(255,255,255));
@@ -1243,11 +1250,69 @@ LRESULT CALLBACK WndProcInput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam
 
 	HPEN hPen, oldPen;
 
+	static HWND hEdit_num, hEdit_input0, hEdit_input1, hEdit_class;
+	static bool scroll_flag = false;
+
 	switch(iMsg)
 	{
 		case WM_CREATE:
 		{
 			//SetTimer(hWnd, 1, 200, 0);
+			hEdit_num = CreateWindow(
+							L"edit", 
+							NULL, 
+							WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
+							10,
+							10,
+							30,
+							250,
+							hWnd,
+							(HMENU)0,
+							g_hInst,
+							NULL
+							);
+
+			hEdit_input0 = CreateWindow(
+							L"edit", 
+							NULL, 
+							WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
+							40,
+							10,
+							80,
+							250,
+							hWnd,
+							(HMENU)1,
+							g_hInst,
+							NULL
+							);
+
+			hEdit_input1 = CreateWindow(
+							L"edit", 
+							NULL, 
+							WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
+							120,
+							10,
+							80,
+							250,
+							hWnd,
+							(HMENU)2,
+							g_hInst,
+							NULL
+							);
+
+			hEdit_class = CreateWindow(
+							L"edit", 
+							NULL, 
+							WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
+							200,
+							10,
+							20,
+							250,
+							hWnd,
+							(HMENU)3,
+							g_hInst,
+							NULL
+							);
 			break;
 		}
 
@@ -1273,7 +1338,50 @@ LRESULT CALLBACK WndProcInput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam
 			//FillRect(MemDC, &crt, hBrush);
 			SetBkColor(MemDC, RGB(255, 255, 255));
 
-			
+			SetWindowText(hEdit_num, L"");
+			SetWindowText(hEdit_input0, L"");
+			SetWindowText(hEdit_input1, L"");
+			SetWindowText(hEdit_class, L"");
+			for(int i=0; i<(int)input_data_list.size(); i++)
+			{
+				long double x = input_data_list[i]->getXY().x;
+				long double y = input_data_list[i]->getXY().y;
+				int data_class = input_data_list[i]->get_class();
+
+				int len = GetWindowTextLength(hEdit_num)+1;
+				vector<WCHAR> str(len);
+				wstring out;
+				WCHAR temp[4][20]={};
+				GetWindowText(hEdit_num, &str[0], len);
+				out = &str[0];
+				wsprintf(temp[0],L"%d\r\n",i);
+				out.append(temp[0]);
+				SetWindowText(hEdit_num, (LPWSTR)out.c_str());
+
+				len = GetWindowTextLength(hEdit_input0)+1;
+				str = vector<WCHAR>(len);
+				GetWindowText(hEdit_input0, &str[0], len);
+				out = &str[0];
+				swprintf(temp[1], 20, L"%.3Lf\r\n",x);
+				out.append(temp[1]);
+				SetWindowText(hEdit_input0, (LPWSTR)out.c_str());
+
+				len = GetWindowTextLength(hEdit_input1)+1;
+				str = vector<WCHAR>(len);
+				GetWindowText(hEdit_input1, &str[0], len);
+				out = &str[0];
+				swprintf(temp[2], 20, L"%.3Lf\r\n",y);
+				out.append(temp[2]);
+				SetWindowText(hEdit_input1, (LPWSTR)out.c_str());
+
+				len = GetWindowTextLength(hEdit_class)+1;
+				str = vector<WCHAR>(len);
+				GetWindowText(hEdit_class, &str[0], len);
+				out = &str[0];
+				swprintf(temp[3], 20, L"%d\r\n",data_class);
+				out.append(temp[3]);
+				SetWindowText(hEdit_class, (LPWSTR)out.c_str());
+			}
 
 
 			BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
@@ -1285,6 +1393,118 @@ LRESULT CALLBACK WndProcInput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam
 			//DeleteObject(hBrush);
 			DeleteObject(hBit);
 			EndPaint(hWnd, &ps);
+			break;
+		}
+		case WM_MOUSEWHEEL:
+		{
+			short temp = HIWORD(wParam);
+			if(temp>0)
+			{
+				SendMessage(hEdit_num, EM_SCROLL, SB_LINEUP, lParam);
+				SendMessage(hEdit_input0, EM_SCROLL, SB_LINEUP, lParam);
+				SendMessage(hEdit_input1, EM_SCROLL, SB_LINEUP, lParam);
+				SendMessage(hEdit_class, EM_SCROLL, SB_LINEUP, lParam);	
+			}
+			else
+			{
+				SendMessage(hEdit_num, EM_SCROLL, SB_LINEDOWN, lParam);
+				SendMessage(hEdit_input0, EM_SCROLL, SB_LINEDOWN, lParam);
+				SendMessage(hEdit_input1, EM_SCROLL, SB_LINEDOWN, lParam);
+				SendMessage(hEdit_class, EM_SCROLL, SB_LINEDOWN, lParam);
+			}
+			break;
+		}
+		case WM_COMMAND:
+		{
+			if(scroll_flag == false)
+			{
+				scroll_flag = true;
+				SendMessage(hEdit_num, WM_KILLFOCUS, 0, 0);
+				SendMessage(hEdit_input0, WM_KILLFOCUS, 0, 0);
+				SendMessage(hEdit_input1, WM_KILLFOCUS, 0, 0);
+				SendMessage(hEdit_class, WM_KILLFOCUS, 0, 0);
+				SetFocus(inputWindowHwnd);
+				scroll_flag = false;
+			}
+			/*switch(LOWORD(wParam))
+			{
+				case 0:
+				{
+					switch(HIWORD(wParam))
+					{
+						case EN_VSCROLL:
+						{
+							if(scroll_flag == false)
+							{
+								scroll_flag = true;
+								SendMessage(hEdit_input0, EM_SCROLL, SB_LINEDOWN, lParam);
+								SendMessage(hEdit_input1, EM_SCROLL, SB_LINEDOWN, lParam);
+								SendMessage(hEdit_class, EM_SCROLL, SB_LINEDOWN, lParam);
+								scroll_flag = false;
+							}
+							break;
+						}
+					}
+					break;
+				}
+				case 1:
+				{
+					switch(HIWORD(wParam))
+					{
+						case EN_VSCROLL:
+						{
+							if(scroll_flag ==false)
+							{
+								scroll_flag = true;
+								SendMessage(hEdit_num, EM_SCROLL, SB_LINEDOWN, lParam);
+								SendMessage(hEdit_input1, EM_SCROLL, SB_LINEDOWN, lParam);
+								SendMessage(hEdit_class, EM_SCROLL, SB_LINEDOWN, lParam);
+								scroll_flag = false;
+							}
+							break;
+						}
+					}
+					break;
+				}
+				case 2:
+				{
+					switch(HIWORD(wParam))
+					{
+						case EN_VSCROLL:
+						{
+							if(scroll_flag ==false)
+							{
+								scroll_flag = true;
+								SendMessage(hEdit_num, EM_SCROLL, wParam, lParam);
+								SendMessage(hEdit_input0, EM_SCROLL, wParam, lParam);
+								SendMessage(hEdit_class, EM_SCROLL, wParam, lParam);
+								scroll_flag = false;
+							}
+							break;
+						}
+					}
+					break;
+				}
+				case 3:
+				{
+					switch(HIWORD(wParam))
+					{
+						case EN_VSCROLL:
+						{
+							if(scroll_flag ==false)
+							{
+								scroll_flag = true;
+								SendMessage(hEdit_num, EM_SCROLL, wParam, lParam);
+								SendMessage(hEdit_input0, EM_SCROLL, wParam, lParam);
+								SendMessage(hEdit_input1, EM_SCROLL, wParam, lParam);
+								scroll_flag = false;
+							}
+							break;
+						}
+					}
+					break;
+				}
+			}*/
 			break;
 		}
 		case WM_DESTROY:
@@ -1306,13 +1526,19 @@ LRESULT CALLBACK WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lPa
 
 	HPEN hPen, oldPen;
 
+	static GUISetClassButton class0_button(15,15,10, 0, WHITE, true);
+	static GUISetClassButton class1_button(40,15,10, 1, RED, false);
+
 	static long double zoom = 10;
 
+	static int input_class = 0;
+	int xpos,ypos;
+	const int size = 240;
 	switch(iMsg)
 	{
 		case WM_CREATE:
 		{
-			//SetTimer(hWnd, 1, 200, 0);
+			//SetTimer(hWnd, 1, 100, 0);
 			break;
 		}
 
@@ -1326,12 +1552,14 @@ LRESULT CALLBACK WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lPa
 		{
 			short temp = HIWORD(wParam);
 			zoom *= (1-(long double)temp/5000);
-			InvalidateRect(hWnd, NULL, FALSE);
+			RefreshPlot();
+			SendMessage(inputGUIWindowHwnd, WM_TIMER, NULL, NULL);
 			break;
 		}
 
 		case WM_PAINT:
 		{
+			SendMessage(inputWindowHwnd, WM_TIMER, NULL, NULL);
 			hdc = BeginPaint(hWnd, &ps);
 			GetClientRect(hWnd, &crt);
 
@@ -1346,7 +1574,13 @@ LRESULT CALLBACK WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lPa
 			//FillRect(MemDC, &crt, hBrush);
 			SetBkColor(MemDC, RGB(255, 255, 255));
 
-			
+			class0_button.print(MemDC);
+			class1_button.print(MemDC);
+
+			for(int i=0; i<(int)input_data_list.size(); i++)
+			{
+				input_data_list[i]->print(MemDC, zoom);
+			}
 
 
 			//draw axis
@@ -1368,6 +1602,58 @@ LRESULT CALLBACK WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lPa
 			//DeleteObject(hBrush);
 			DeleteObject(hBit);
 			EndPaint(hWnd, &ps);
+			break;
+		}
+		case WM_CHAR:
+		{
+			switch(wParam)
+			{
+				case 26:
+				{
+					if(input_data_list.size()>0)
+					{
+						InputData* temp = input_data_list[input_data_list.size()-1];
+						input_data_set[temp->get_class()].erase(temp);
+						input_data_list.pop_back();
+						SendMessage(inputGUIWindowHwnd, WM_TIMER, NULL, NULL);
+					}
+					break;
+				}
+			}
+			break;
+		}
+
+		case WM_LBUTTONDOWN:
+		{	
+			xpos = GET_X_LPARAM(lParam);
+			ypos = GET_Y_LPARAM(lParam);
+
+			if(class0_button.isIn(xpos, ypos))
+			{
+				class0_button.selected = true;
+				class1_button.selected = false;
+				input_class = 0;
+				SendMessage(inputGUIWindowHwnd, WM_TIMER, NULL, NULL);
+				break;
+			}
+			if(class1_button.isIn(xpos, ypos))
+			{
+				class0_button.selected = false;
+				class1_button.selected = true;
+				input_class = 1;
+				SendMessage(inputGUIWindowHwnd, WM_TIMER, NULL, NULL);
+				break;
+			}
+			if(20 <= xpos && xpos <= 260 && 10 <= ypos && ypos <= 250)
+			{
+				xpos = xpos - 20;
+				ypos = 250 - ypos;
+				input_data_list.push_back(new InputData(zoom*(long double)xpos/size - zoom/2.0, zoom*(long double)ypos/size - zoom/2.0, input_class));
+				input_data_set[input_class].insert(input_data_list[input_data_list.size()-1]);
+				RefreshPlot();
+				SendMessage(inputGUIWindowHwnd, WM_TIMER, NULL, NULL);
+				break;
+			}
 			break;
 		}
 		case WM_DESTROY:
