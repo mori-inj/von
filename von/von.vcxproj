@@ -145,9 +145,11 @@
   <ItemGroup>
     <ClCompile Include="button.cpp" />
     <ClCompile Include="function.cpp" />
+    <ClCompile Include="gui.cpp" />
     <ClCompile Include="gui_set_class_button.cpp" />
     <ClCompile Include="input_button.cpp" />
     <ClCompile Include="input_data.cpp" />
+    <ClCompile Include="model.cpp" />
     <ClCompile Include="node.cpp" />
     <ClCompile Include="node_button.cpp" />
     <ClCompile Include="output_button.cpp" />
@@ -161,9 +163,11 @@
     <ClInclude Include="button.h" />
     <ClInclude Include="coord.h" />
     <ClInclude Include="function.h" />
+    <ClInclude Include="gui.h" />
     <ClInclude Include="gui_set_class_button.h" />
     <ClInclude Include="input_button.h" />
     <ClInclude Include="input_data.h" />
+    <ClInclude Include="model.h" />
     <ClInclude Include="node.h" />
     <ClInclude Include="node_button.h" />
     <ClInclude Include="output_button.h" />

@@ -37,16 +37,16 @@ Node::Node(Node* node, int idx)
 	is_selected_left = node -> is_selected_left;
 	is_selected_right = node -> is_selected_right;
 
-	for(int i=0; i<(int)node->weight_list.size(); i++)
+	for(int i=0; i<(int)node->input_weight_list.size(); i++)
 	{
-		weight_list.push_back(new Weight(node->weight_list[i]->getSrc(), this));
+		input_weight_list.push_back(new Weight(node->input_weight_list[i]->getSrc(), this));
 	}
 }
 
-void Node::printWeight(HDC hdc)
+void Node::print_weight(HDC hdc)
 {
-	for(int i=0; i<(int)weight_list.size(); i++)
-		weight_list[i]->print(hdc);
+	for(int i=0; i<(int)input_weight_list.size(); i++)
+		input_weight_list[i]->print(hdc);
 }
 void Node::print(HDC hdc)
 {
@@ -110,7 +110,7 @@ void Node::print(HDC hdc)
 	rect.left = pos.x - r/2;
 	rect.right = pos.x + r/2;
 	wsprintf(str, L"%d",idx);
-	DrawText(hdc, str, wcslen(str), &rect, DT_CENTER | DT_VCENTER);
+	DrawText(hdc, str, (int)wcslen(str), &rect, DT_CENTER | DT_VCENTER);
 	//SelectObject(hdc, oldPen);
 	//DeleteObject(hPen);
 }
@@ -135,15 +135,15 @@ void Node::set_input(long double input)
 	this->input = input;
 }
 
-long double Node::get_output()
+long double Node::get_output() //TODO: needs to be cached
 {
 	long double sum = 0;
-	if(weight_list.size()==0)
+	if(input_weight_list.size()==0)
 		return this->input;
 
-	for(int i=0; i<(int)weight_list.size(); i++)
+	for(int i=0; i<(int)input_weight_list.size(); i++)
 	{
-		sum += ( weight_list[i]->getSrc()->get_output() ) * ( weight_list[i]->getW() );
+		sum += ( input_weight_list[i]->getSrc()->get_output() ) * ( input_weight_list[i]->getW() );
 	}
 	sum += bias;
 	return sigmoid(10,sum);

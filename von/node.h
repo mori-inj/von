@@ -20,17 +20,16 @@ public:
 	bool plot_input;
 	bool plot_output;
 	bool plot_border_output;
-	bool is_selected_left;
-	bool is_selected_right;
+	bool is_selected_left, is_selected_right;
 
-	//list of weights whose dst is this node
-	vector<Weight*> weight_list;
+	vector<Weight*> input_weight_list;
+	vector<Weight*> output_weight_list;
 
 	Node(){};
 	Node(int x, int y, int idx);
 	Node(Node* node, int idx);
 	void print(HDC hdc);
-	void printWeight(HDC hdc);
+	void print_weight(HDC hdc);
 	void set_idx(int idx);
 	long double get_bias();
 	long double get_input();
