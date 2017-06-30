@@ -3,6 +3,7 @@
 #include <Windowsx.h>
 #include <time.h>
 #include <iostream>
+//#include <vld.h>
 #include "gui.h"
 
 using namespace Gdiplus;
@@ -14,13 +15,9 @@ HINSTANCE g_hInst;
 HWND hWndMain;
 LPCTSTR lpszClass = TEXT("GdiPlusStart");
 
-GUI gui;
+static GUI gui(&g_hInst);
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK WndProcInput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK WndProcOutput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
@@ -53,28 +50,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
 
 	//
 	WndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-	WndClass.lpfnWndProc = (WNDPROC)WndProcPlot;
+	WndClass.lpfnWndProc = (WNDPROC)gui.WndProcPlot;
 	WndClass.lpszClassName = L"Plot";
 	RegisterClass(&WndClass);
 	//
 
 	//
 	WndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-	WndClass.lpfnWndProc = (WNDPROC)WndProcInput;
+	WndClass.lpfnWndProc = (WNDPROC)gui.WndProcInput;
 	WndClass.lpszClassName = L"Input";
 	RegisterClass(&WndClass);
 	//
 
 	//
 	WndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-	WndClass.lpfnWndProc = (WNDPROC)WndProcInputGUI;
+	WndClass.lpfnWndProc = (WNDPROC)gui.WndProcInputGUI;
 	WndClass.lpszClassName = L"InputGUI";
 	RegisterClass(&WndClass);
 	//
 
 	//
 	WndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-	WndClass.lpfnWndProc = (WNDPROC)WndProcOutput;
+	WndClass.lpfnWndProc = (WNDPROC)gui.WndProcOutput;
 	WndClass.lpszClassName = L"Output";
 	RegisterClass(&WndClass);
 	//
@@ -116,7 +113,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_CREATE:
 		{
-			gui = GUI();
+			gui = GUI(&g_hInst);
 			SetTimer(hWnd, 1, 10, 0);
 			srand((unsigned)time(NULL));
 			break;
@@ -139,7 +136,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 			SetBkColor(MemDC, RGB(255, 255, 255));
 
-			gui.print(MemDC);
+			gui.print(MemDC, hWnd);
 
 
 			BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
@@ -165,7 +162,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 		{	
 			xpos = GET_X_LPARAM(lParam);
 			ypos = GET_Y_LPARAM(lParam);
-			gui.LUp(xpos, ypos);
+			gui.LUp(xpos, ypos, hWnd);
 			break;
 		}
 
@@ -264,234 +261,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_DESTROY:
 		{
+			_CrtDumpMemoryLeaks();
 			PostQuitMessage(0);
-			break;
-		}
-	}
-	return DefWindowProc(hWnd, iMsg, wParam, lParam);
-}
-
-LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
-{
-	HDC hdc, MemDC;
-	PAINTSTRUCT ps;
-
-	HBITMAP hBit, OldBit;
-	RECT crt;
-
-	switch(iMsg)
-	{
-		case WM_CREATE:
-		{
-			//SetTimer(hWnd, 1, 200, 0);
-			break;
-		}
-
-		case WM_TIMER:
-		{
-			InvalidateRect(hWnd, NULL, FALSE);
-			break;
-		}
-
-		case WM_MOUSEWHEEL:
-		{
-			break;
-		}
-
-		case WM_PAINT:
-		{
-			hdc = BeginPaint(hWnd, &ps);
-			GetClientRect(hWnd, &crt);
-
-			MemDC = CreateCompatibleDC(hdc);
-			hBit = CreateCompatibleBitmap(hdc, crt.right, crt.bottom);
-			OldBit = (HBITMAP)SelectObject(MemDC, hBit);
-			
-			SetBkColor(MemDC, RGB(255, 255, 255));
-
-
-			BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
-			SelectObject(MemDC, OldBit);
-			DeleteDC(MemDC);
-			DeleteObject(hBit);
-			EndPaint(hWnd, &ps);
-			break;
-		}
-		case WM_DESTROY:
-		{
-			break;
-		}
-	}
-	return DefWindowProc(hWnd, iMsg, wParam, lParam);
-}
-
-LRESULT CALLBACK WndProcInput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
-{
-	HDC hdc, MemDC;
-	PAINTSTRUCT ps;
-
-	HBITMAP hBit, OldBit;
-	RECT crt;
-
-	switch(iMsg)
-	{
-		case WM_CREATE:
-		{
-			//SetTimer(hWnd, 1, 200, 0);
-			break;
-		}
-
-		case WM_TIMER:
-		{
-			InvalidateRect(hWnd, NULL, FALSE);
-			break;
-		}
-
-		case WM_PAINT:
-		{
-			hdc = BeginPaint(hWnd, &ps);
-			GetClientRect(hWnd, &crt);
-
-			MemDC = CreateCompatibleDC(hdc);
-			hBit = CreateCompatibleBitmap(hdc, crt.right, crt.bottom);
-			OldBit = (HBITMAP)SelectObject(MemDC, hBit);
-			
-			SetBkColor(MemDC, RGB(255, 255, 255));
-
-
-			BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
-			SelectObject(MemDC, OldBit);
-			DeleteDC(MemDC);
-			DeleteObject(hBit);
-			EndPaint(hWnd, &ps);
-			break;
-		}
-		case WM_MOUSEWHEEL:
-		{
-			break;
-		}
-		case WM_COMMAND:
-		{
-			break;
-		}
-		case WM_DESTROY:
-		{
-			break;
-		}
-	}
-	return DefWindowProc(hWnd, iMsg, wParam, lParam);
-}
-
-LRESULT CALLBACK WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
-{
-	HDC hdc, MemDC;
-	PAINTSTRUCT ps;
-
-	HBITMAP hBit, OldBit;
-	RECT crt;
-
-	int xpos,ypos;
-	switch(iMsg)
-	{
-		case WM_CREATE:
-		{
-			//SetTimer(hWnd, 1, 100, 0);
-			break;
-		}
-
-		case WM_TIMER:
-		{
-			InvalidateRect(hWnd, NULL, FALSE);
-			break;
-		}
-
-		case WM_MOUSEWHEEL:
-		{
-			break;
-		}
-
-		case WM_PAINT:
-		{
-			hdc = BeginPaint(hWnd, &ps);
-			GetClientRect(hWnd, &crt);
-
-			MemDC = CreateCompatibleDC(hdc);
-			hBit = CreateCompatibleBitmap(hdc, crt.right, crt.bottom);
-			OldBit = (HBITMAP)SelectObject(MemDC, hBit);
-			
-			SetBkColor(MemDC, RGB(255, 255, 255));
-
-			BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
-			SelectObject(MemDC, OldBit);
-			DeleteDC(MemDC);
-			DeleteObject(hBit);
-			EndPaint(hWnd, &ps);
-			break;
-		}
-		case WM_CHAR:
-		{
-			break;
-		}
-
-		case WM_LBUTTONDOWN:
-		{	
-			xpos = GET_X_LPARAM(lParam);
-			ypos = GET_Y_LPARAM(lParam);
-
-			break;
-		}
-		case WM_DESTROY:
-		{
-			break;
-		}
-	}
-	return DefWindowProc(hWnd, iMsg, wParam, lParam);
-}
-
-LRESULT CALLBACK WndProcOutput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
-{
-	HDC hdc, MemDC;
-	PAINTSTRUCT ps;
-
-	HBITMAP hBit, OldBit;
-	RECT crt;
-
-	switch(iMsg)
-	{
-		case WM_CREATE:
-		{
-			//SetTimer(hWnd, 1, 200, 0);
-			break;
-		}
-
-		case WM_TIMER:
-		{
-			InvalidateRect(hWnd, NULL, FALSE);
-			break;
-		}
-
-		case WM_PAINT:
-		{
-			hdc = BeginPaint(hWnd, &ps);
-			GetClientRect(hWnd, &crt);
-
-			MemDC = CreateCompatibleDC(hdc);
-			hBit = CreateCompatibleBitmap(hdc, crt.right, crt.bottom);
-			OldBit = (HBITMAP)SelectObject(MemDC, hBit);
-			
-			SetBkColor(MemDC, RGB(255, 255, 255));
-
-
-
-			BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
-			SelectObject(MemDC, OldBit);
-			DeleteDC(MemDC);
-			DeleteObject(hBit);
-			EndPaint(hWnd, &ps);
-			break;
-		}
-		case WM_DESTROY:
-		{
 			break;
 		}
 	}

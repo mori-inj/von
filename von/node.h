@@ -13,8 +13,8 @@ class Node : public Button
 private:
 	long double input;
 	long double bias;
-public:
 	int idx;
+public:
 	bool plot_mode;
 	bool input_node;
 	bool plot_input;
@@ -31,6 +31,7 @@ public:
 	void print(HDC hdc);
 	void print_weight(HDC hdc);
 	void set_idx(int idx);
+	int get_idx();
 	long double get_bias();
 	long double get_input();
 	void set_input(long double input);

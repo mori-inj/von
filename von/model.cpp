@@ -4,27 +4,40 @@
 Model::Model()
 {
 }
+
+Model::~Model()
+{
+	for(int i=0; i<(int)node_list.size(); i++) {
+		Node* node = node_list[i];
+		delete(node);
+	}
+	for(int i=0; i<(int)weight_list.size(); i++) {
+		Weight* weight = weight_list[i];
+		delete(weight);
+	}
+}
+
 void Model::add_node(Node* node)
 {
 	node_list.push_back(node);
-	/*printf("===========\nnode list:\n");
+	printf("===========\nnode list:\n");
 	for(int i=0; i<(int)node_list.size(); i++)
 	{
 		printf("%d\n",i);
 		for(int j=0; j<(int)node_list[i]->input_weight_list.size(); j++) {
-			printf("  %d -> %d\n", node_list[i]->input_weight_list[j]->getSrc()->idx, i); fflush(stdout);
+			printf("  %d -> %d\n", node_list[i]->input_weight_list[j]->getSrc()->get_idx(), i); fflush(stdout);
 		}
 		for(int j=0; j<(int)node_list[i]->output_weight_list.size(); j++) {
-			printf("  %d -> %d\n", i, node_list[i]->output_weight_list[j]->getDst()->idx); fflush(stdout);
+			printf("  %d -> %d\n", i, node_list[i]->output_weight_list[j]->getDst()->get_idx()); fflush(stdout);
 		}
 	}
 	printf("============\n\n"); fflush(stdout);
 
 	printf("===========\nweight set:\n");
 	for(auto w : weight_set) {
-		printf("%d -> %d\n",w.first->idx,w.second->idx); fflush(stdout);
+		printf("%d -> %d\n",w.first->get_idx(),w.second->get_idx()); fflush(stdout);
 	}
-	printf("============\n\n"); fflush(stdout);*/
+	printf("============\n\n"); fflush(stdout);
 }
 Node* Model::get_node_by_idx(int idx)
 {
@@ -40,13 +53,39 @@ vector<Node*>::iterator Model::get_last_node_iter()
 }
 bool Model::check_weight_exists(Node* a, Node* b)
 {
+	if(a == b)
+		return true;
 	if(weight_set.find(make_pair(a,b)) != weight_set.end())
 		return true;
 	return false;
 }
-void Model::update_weight_set(Node* a, Node* b)
+void Model::update_weight_set(Weight* w)
 {
-	weight_set.insert(make_pair(a,b));
+	weight_set.insert(make_pair(w->getSrc(),w->getDst()));
+	weight_list.push_back(w);
+}
+
+void Model::remove_weight_set(Weight* w)
+{
+	weight_set.erase(make_pair(w->getSrc(),w->getDst()));
+}
+
+void Model::erase_node(Node* a)
+{
+	for(int i=0; i<(int)node_list.size(); i++){
+		if(node_list[i] == a) {
+			node_list.erase(node_list.begin() + i);
+			break;
+		}
+	}
+	delete(a);
+}
+
+void Model::reindex()
+{
+	for(int i=0; i<(int)node_list.size(); i++){
+		node_list[i]->set_idx(i);
+	}
 }
 
 
@@ -63,7 +102,7 @@ int Model::get_idx_of_clicked_node(int x, int y)
 	{
 		if(node_list[i]->isIn(x, y))
 		{
-			return node_list[i]->idx;
+			return node_list[i]->get_idx();
 		}
 	}
 	return -1;
@@ -94,4 +133,25 @@ void Model::print(HDC MemDC)
 	for(auto node: node_list) {
 		node -> print(MemDC);
 	}
+}
+
+void Model::clear_plot_mode()
+{
+	for(auto node : node_list) {
+		node -> plot_mode = false;
+	}
+	for(auto w :  weight_list) {
+		w -> plot_mode = false;
+	}
+}
+
+int Model::count_input_node()
+{
+	int cnt = 0;
+	for(int i = 0; i<(int)node_list.size(); i++)
+	{
+		if(node_list[i]->input_node)
+			cnt++;
+	}
+	return cnt;
 }

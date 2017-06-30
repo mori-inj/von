@@ -14,9 +14,6 @@ GUISetClassButton::GUISetClassButton(int x, int y, int r, int class_id, COLORREF
 
 void GUISetClassButton::print(HDC hdc)
 {
-	HPEN hPen,oldPen;
-	HBRUSH hBrush, oldBrush;
-
 	if(selected)
 		EllipseLine(hdc, pos.x,pos.y, r, 3, BRIGHTWHITE, color);
 	else
@@ -32,5 +29,5 @@ void GUISetClassButton::print(HDC hdc)
 	rect.left = pos.x - r;
 	rect.right = pos.x + r;
 	wsprintf(str, L"%d",class_id);
-	DrawText(hdc, str, wcslen(str), &rect, DT_CENTER | DT_VCENTER);
+	DrawText(hdc, str, (int)wcslen(str), &rect, DT_CENTER | DT_VCENTER);
 }

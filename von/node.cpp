@@ -3,7 +3,6 @@
 #include "print.h"
 #include "function.h"
 
-
 Node::Node(int x, int y, int idx) : Button(x,y)
 {
 	bias = 0.5;
@@ -36,11 +35,6 @@ Node::Node(Node* node, int idx)
 	
 	is_selected_left = node -> is_selected_left;
 	is_selected_right = node -> is_selected_right;
-
-	for(int i=0; i<(int)node->input_weight_list.size(); i++)
-	{
-		input_weight_list.push_back(new Weight(node->input_weight_list[i]->getSrc(), this));
-	}
 }
 
 void Node::print_weight(HDC hdc)
@@ -118,6 +112,11 @@ void Node::print(HDC hdc)
 void Node::set_idx(int idx)
 {
 	this->idx = idx;
+}
+
+int Node::get_idx()
+{
+	return idx;
 }
 
 long double Node::get_bias()
