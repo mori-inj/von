@@ -5,12 +5,7 @@
 #include <stdio.h>//
 #include <assert.h>//
 
-set<Node*> GUI::plot_in_list;
-set<Node*> GUI::plot_out_list;
-HWND GUI::plotWindowHwnd, GUI::inputWindowHwnd, GUI::inputGUIWindowHwnd, GUI::outputWindowHwnd;
-HINSTANCE* GUI::g_hInst;
-vector<InputData*> GUI::input_data_list;
-set<InputData*> GUI::input_data_set[2];
+int OUTPUT_CNT;
 
 bool is_node_in_box(LPRECT select_box, Node* node);
 bool plot_verify(Node* idx, bool reset);
@@ -24,11 +19,18 @@ GUI::GUI(HINSTANCE* g_hInst) : node_add_button(35,35,25) , plot_button(100,35,25
 	is_any_selected_left = is_any_selected_right = false;
 	plot_input_count = 0;
 	shift_down = false;
+	plotWindowHwnd = inputWindowHwnd = inputGUIWindowHwnd = outputWindowHwnd = NULL;
 	this->g_hInst = g_hInst;
 }
 
 void GUI::print(HDC MemDC, HWND& hWnd)
 {
+	model.train(0.03, plot_in_list, plot_out_list, plotWindowHwnd);
+
+
+
+
+
 	node_add_button.print(MemDC);
 	plot_button.print(MemDC);
 	input_button.print(MemDC);
@@ -83,6 +85,10 @@ void GUI::print(HDC MemDC, HWND& hWnd)
 						NULL
 						);
 			ShowWindow(inputGUIWindowHwnd, SW_SHOW);
+		}
+	} else {
+		if(inputGUIWindowHwnd != NULL) {
+			SendMessage(inputGUIWindowHwnd, WM_CLOSE, NULL, NULL);
 		}
 	}
 
@@ -174,7 +180,7 @@ void GUI::LUp(int x, int y, HWND& hWnd)
 		}
 		case plot_button_LDown:
 		{
-			if(plot_button.isIn(x,y)) {
+			if(plot_button.isIn(x,y) && plot_button.plot_mode) {
 				RECT temp;
 				GetWindowRect(hWnd, &temp);
 				SendMessage(plotWindowHwnd, WM_CLOSE, NULL, NULL);
@@ -518,7 +524,6 @@ void GUI::end_box_drag()
 	}
 }
 
-
 void GUI::command(int msg)
 {
 	RefreshPlot();
@@ -527,11 +532,9 @@ void GUI::command(int msg)
 	{
 		case IDM_PLOT_INPUT:
 		{
-			if (plot_input_count < 2)
-			{
+			if (plot_input_count < 2) {
 				Node* node = model.get_node_by_idx(node_idx);
-				if(node->plot_output || node ->plot_border_output)
-				{
+				if(node->plot_output || node ->plot_border_output) {
 					plot_out_list.erase(node);
 				}
 
@@ -546,13 +549,11 @@ void GUI::command(int msg)
 		case IDM_PLOT_OUTPUT:
 		{
 			Node* node = model.get_node_by_idx(node_idx);
-			if(node -> plot_input)
-			{
+			if(node -> plot_input) {
 				plot_input_count--;
 				plot_in_list.erase(node);
 			}
-			if(node ->plot_border_output)
-			{
+			if(node ->plot_border_output) {
 				plot_out_list.erase(node);
 			}
 
@@ -560,19 +561,17 @@ void GUI::command(int msg)
 			node -> plot_border_output = false;
 			node -> plot_output = true;
 
-			plot_out_list.insert(node);			
+			plot_out_list.insert(node);	
 			break;
 		}
 		case IDM_PLOT_BORDER_OUTPUT:
 		{
 			Node* node = model.get_node_by_idx(node_idx);
-			if(node -> plot_input)
-			{
+			if(node -> plot_input) {
 				plot_input_count--;
 				plot_in_list.erase(node);
 			}
-			if(node -> plot_output)
-			{
+			if(node -> plot_output) {
 				plot_out_list.erase(node);
 			}
 
@@ -581,19 +580,24 @@ void GUI::command(int msg)
 			node -> plot_border_output = true;
 
 			plot_out_list.insert(node);
+
+			const int range = 228;
+			border_clr_sample[node] = RGB(rand()%range+256-range, rand()%range+256-range, rand()%range+256-range);
+
 			break;
 		}
 		case IDM_RESET:
 		{
 			Node* node = model.get_node_by_idx(node_idx);
-			if(node -> plot_input)
-			{
+			if(node -> plot_input) {
 				plot_input_count--;
 				plot_in_list.erase(node);
 			}
-			if(node -> plot_output || node -> plot_border_output)
-			{
+			if(node -> plot_output || node -> plot_border_output) {
 				plot_out_list.erase(node);
+				if(node -> plot_border_output) {
+					border_clr_sample.erase(node);
+				}
 			}
 
 			node -> plot_input = false;
@@ -697,6 +701,9 @@ void GUI::keyboard_up(string input)
 				}
 				if(node -> plot_border_output || node -> plot_output) {
 					plot_out_list.erase(node);
+					if(node -> plot_border_output) {
+						border_clr_sample.erase(node);
+					}
 				}
 				model.erase_node(node);
 			}
@@ -721,9 +728,9 @@ COLORREF color_add(COLORREF ac, COLORREF bc)
 
 COLORREF color_scalar_mul(long double k, COLORREF ac)
 {
-	int r = GetRValue(ac) * k;
-	int g = GetGValue(ac) * k;
-	int b = GetBValue(ac) * k;
+	int r = (int)(GetRValue(ac) * k);
+	int g = (int)(GetGValue(ac) * k);
+	int b = (int)(GetBValue(ac) * k);
 	if(r>255) r = 255;
 	if(g>255) g = 255;
 	if(b>255) b = 255;
@@ -774,36 +781,33 @@ LRESULT CALLBACK GUI::WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lP
 
 		case WM_PAINT:
 		{
+			bool ret = true;
+			for(auto it : plot_out_list) {
+				bool temp  = plot_verify(it, true);
+				ret = ret && temp;
+			}
+			if( !(ret && plot_input_count == 2 && (int)plot_out_list.size()>0)) {
+				break;
+			}
+
+			OUTPUT_CNT = 0;
 			hdc = BeginPaint(hWnd, &ps);
 			GetClientRect(hWnd, &crt);
 
 			MemDC = CreateCompatibleDC(hdc);
 			hBit = CreateCompatibleBitmap(hdc, crt.right, crt.bottom);
 			OldBit = (HBITMAP)SelectObject(MemDC, hBit);
-			//hBrush = CreateSolidBrush(RGB(255, 255, 255));
-			//oldBrush = (HBRUSH)SelectObject(MemDC, hBrush);
-			//hPen = CreatePen(PS_SOLID, 5, RGB(255, 255, 255));
-			//oldPen = (HPEN)SelectObject(MemDC, hPen);
-
-			//FillRect(MemDC, &crt, hBrush);
 			SetBkColor(MemDC, RGB(255, 255, 255));
 
 			Node *input[2];
 			input[0] = *(plot_in_list.begin());
 			input[1] = *(plot_in_list.rbegin());
 
-			vector<COLORREF> border_clr_sample;
-			for(auto it : plot_out_list) {
-				if(it -> plot_border_output) {
-					border_clr_sample.push_back(RGB(rand()%128+128, rand()%128+128, rand()%128+128));
-				}
-			}
-
 			const int size = 240;
-			for(int i=0; i<size; i++)
+			for(int i=0; i<size; i+=1)
 			{
 				input[0]->set_input(zoom*(long double)i/size - zoom/2.0);
-				for(int j=0; j<size; j++)
+				for(int j=0; j<size; j+=1)
 				{
 					input[1]->set_input(zoom*(long double)j/size - zoom/2.0);
 					vector<long double> out_pixel;
@@ -824,12 +828,16 @@ LRESULT CALLBACK GUI::WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lP
 						}
 					}
 					COLORREF border_clr = RGB(0,0,0);
-					for(int k=0; k<cnt_b; k++) {
-						border_clr = color_add(border_clr, color_scalar_mul(border_out_pixel[k], border_clr_sample[k]));
+					int k = 0;
+					for(auto it : plot_out_list) {
+						if(it -> plot_border_output) {
+							border_clr = color_add(border_clr, color_scalar_mul(border_out_pixel[k], border_clr_sample[it]));
+							k++;
+						}
 					}
 					COLORREF out_clr = RGB(0,0,0);
 					for(int k=0; k<cnt_o; k++) {
-						out_clr  = color_add(out_clr, color_scalar_mul(out_pixel[k], RGB(255,255,255)));
+						out_clr = color_add(out_clr, color_scalar_mul(out_pixel[k], RGB(255,255,255)));
 					}
 					
 					if(GetRValue(border_clr)+GetGValue(border_clr)+GetBValue(border_clr) > 50) {
@@ -845,9 +853,9 @@ LRESULT CALLBACK GUI::WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lP
 				}
 			}
 
-			for(int i=0; i<(int)input_data_list.size(); i++)
+			for(int i=0; i<(int)model.input_data_list.size(); i++)
 			{
-				input_data_list[i]->print(MemDC, zoom);
+				model.input_data_list[i]->print(MemDC, (int)zoom);
 			}
 
 			//draw axis
@@ -864,12 +872,11 @@ LRESULT CALLBACK GUI::WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lP
 			BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
 			SelectObject(MemDC, OldBit);
 			DeleteDC(MemDC);
-			//SelectObject(MemDC, oldPen);
-			//DeleteObject(hPen);
-			//SelectObject(MemDC, oldBrush);
-			//DeleteObject(hBrush);
 			DeleteObject(hBit);
 			EndPaint(hWnd, &ps);
+
+
+			printf("OUTPUT_CNT: %d / %d = %Lf\n", OUTPUT_CNT, 240*240, (long double)OUTPUT_CNT/(240*240)); fflush(stdout);
 			break;
 		}
 		case WM_DESTROY:
@@ -888,8 +895,6 @@ LRESULT CALLBACK GUI::WndProcInput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM l
 
 	HBITMAP hBit, OldBit;
 	RECT crt;
-
-	HPEN hPen, oldPen;
 
 	static HWND hEdit_num, hEdit_input0, hEdit_input1, hEdit_class;
 	static bool scroll_flag = false;
@@ -971,23 +976,18 @@ LRESULT CALLBACK GUI::WndProcInput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM l
 			MemDC = CreateCompatibleDC(hdc);
 			hBit = CreateCompatibleBitmap(hdc, crt.right, crt.bottom);
 			OldBit = (HBITMAP)SelectObject(MemDC, hBit);
-			//hBrush = CreateSolidBrush(RGB(255, 255, 255));
-			//oldBrush = (HBRUSH)SelectObject(MemDC, hBrush);
-			//hPen = CreatePen(PS_SOLID, 5, RGB(255, 255, 255));
-			//oldPen = (HPEN)SelectObject(MemDC, hPen);
-
-			//FillRect(MemDC, &crt, hBrush);
+			
 			SetBkColor(MemDC, RGB(255, 255, 255));
 
 			SetWindowText(hEdit_num, L"");
 			SetWindowText(hEdit_input0, L"");
 			SetWindowText(hEdit_input1, L"");
 			SetWindowText(hEdit_class, L"");
-			for(int i=0; i<(int)input_data_list.size(); i++)
+			for(int i=0; i<(int)model.input_data_list.size(); i++)
 			{
-				long double x = input_data_list[i]->getXY().x;
-				long double y = input_data_list[i]->getXY().y;
-				int data_class = input_data_list[i]->get_class();
+				long double x = model.input_data_list[i]->getXY().x;
+				long double y = model.input_data_list[i]->getXY().y;
+				int data_class = model.input_data_list[i]->get_class();
 
 				int len = GetWindowTextLength(hEdit_num)+1;
 				vector<WCHAR> str(len);
@@ -1214,9 +1214,9 @@ LRESULT CALLBACK GUI::WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARA
 			class0_button.print(MemDC);
 			class1_button.print(MemDC);
 
-			for(int i=0; i<(int)input_data_list.size(); i++)
+			for(int i=0; i<(int)model.input_data_list.size(); i++)
 			{
-				input_data_list[i]->print(MemDC, zoom);
+				model.input_data_list[i]->print(MemDC, (int)zoom);
 			}
 
 
@@ -1247,11 +1247,11 @@ LRESULT CALLBACK GUI::WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARA
 			{
 				case 26:
 				{
-					if(input_data_list.size()>0)
+					if(model.input_data_list.size()>0)
 					{
-						InputData* temp = input_data_list[input_data_list.size()-1];
-						input_data_set[temp->get_class()].erase(temp);
-						input_data_list.pop_back();
+						InputData* temp = model.input_data_list[model.input_data_list.size()-1];
+						model.input_data_set[temp->get_class()].erase(temp);
+						model.input_data_list.pop_back();
 						SendMessage(inputGUIWindowHwnd, WM_TIMER, NULL, NULL);
 					}
 					break;
@@ -1285,10 +1285,11 @@ LRESULT CALLBACK GUI::WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARA
 			{
 				xpos = xpos - 20;
 				ypos = 250 - ypos;
-				input_data_list.push_back(new InputData(zoom*(long double)xpos/size - zoom/2.0, zoom*(long double)ypos/size - zoom/2.0, input_class));
-				input_data_set[input_class].insert(input_data_list[input_data_list.size()-1]);
+				model.input_data_list.push_back(new InputData(zoom*(long double)xpos/size - zoom/2.0, zoom*(long double)ypos/size - zoom/2.0, input_class));
+				model.input_data_set[input_class].insert(model.input_data_list[model.input_data_list.size()-1]);
 				RefreshPlot();
 				SendMessage(inputGUIWindowHwnd, WM_TIMER, NULL, NULL);
+				model.train(0.1, plot_in_list, plot_out_list, plotWindowHwnd);
 				break;
 			}
 			break;
@@ -1309,8 +1310,6 @@ LRESULT CALLBACK GUI::WndProcOutput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM 
 
 	HBITMAP hBit, OldBit;
 	RECT crt;
-
-	HPEN hPen, oldPen;
 
 	switch(iMsg)
 	{
@@ -1334,12 +1333,6 @@ LRESULT CALLBACK GUI::WndProcOutput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM 
 			MemDC = CreateCompatibleDC(hdc);
 			hBit = CreateCompatibleBitmap(hdc, crt.right, crt.bottom);
 			OldBit = (HBITMAP)SelectObject(MemDC, hBit);
-			//hBrush = CreateSolidBrush(RGB(255, 255, 255));
-			//oldBrush = (HBRUSH)SelectObject(MemDC, hBrush);
-			//hPen = CreatePen(PS_SOLID, 5, RGB(255, 255, 255));
-			//oldPen = (HPEN)SelectObject(MemDC, hPen);
-
-			//FillRect(MemDC, &crt, hBrush);
 			SetBkColor(MemDC, RGB(255, 255, 255));
 
 
@@ -1347,10 +1340,6 @@ LRESULT CALLBACK GUI::WndProcOutput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM 
 			BitBlt(hdc, 0, 0, crt.right, crt.bottom, MemDC, 0, 0, SRCCOPY);
 			SelectObject(MemDC, OldBit);
 			DeleteDC(MemDC);
-			//SelectObject(MemDC, oldPen);
-			//DeleteObject(hPen);
-			//SelectObject(MemDC, oldBrush);
-			//DeleteObject(hBrush);
 			DeleteObject(hBit);
 			EndPaint(hWnd, &ps);
 			break;

@@ -18,6 +18,10 @@ LPCTSTR lpszClass = TEXT("GdiPlusStart");
 static GUI gui(&g_hInst);
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK WndProcInput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK WndProcOutput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
@@ -50,28 +54,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
 
 	//
 	WndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-	WndClass.lpfnWndProc = (WNDPROC)gui.WndProcPlot;
+	WndClass.lpfnWndProc = (WNDPROC)WndProcPlot;
 	WndClass.lpszClassName = L"Plot";
 	RegisterClass(&WndClass);
 	//
 
 	//
 	WndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-	WndClass.lpfnWndProc = (WNDPROC)gui.WndProcInput;
+	WndClass.lpfnWndProc = (WNDPROC)WndProcInput;
 	WndClass.lpszClassName = L"Input";
 	RegisterClass(&WndClass);
 	//
 
 	//
 	WndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-	WndClass.lpfnWndProc = (WNDPROC)gui.WndProcInputGUI;
+	WndClass.lpfnWndProc = (WNDPROC)WndProcInputGUI;
 	WndClass.lpszClassName = L"InputGUI";
 	RegisterClass(&WndClass);
 	//
 
 	//
 	WndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-	WndClass.lpfnWndProc = (WNDPROC)gui.WndProcOutput;
+	WndClass.lpfnWndProc = (WNDPROC)WndProcOutput;
 	WndClass.lpszClassName = L"Output";
 	RegisterClass(&WndClass);
 	//
@@ -261,10 +265,29 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_DESTROY:
 		{
-			_CrtDumpMemoryLeaks();
 			PostQuitMessage(0);
 			break;
 		}
 	}
 	return DefWindowProc(hWnd, iMsg, wParam, lParam);
+}
+
+LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
+{
+	return gui.WndProcPlot(hWnd, iMsg, wParam, lParam);
+}
+
+LRESULT CALLBACK WndProcInput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
+{
+	return gui.WndProcInput(hWnd, iMsg, wParam, lParam);
+}
+
+LRESULT CALLBACK WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
+{
+	return gui.WndProcInputGUI(hWnd, iMsg, wParam, lParam);
+}
+
+LRESULT CALLBACK WndProcOutput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
+{
+	return gui.WndProcOutput(hWnd, iMsg, wParam, lParam);
 }

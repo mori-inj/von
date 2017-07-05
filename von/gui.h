@@ -7,7 +7,7 @@
 #include "output_button.h"
 #include "model.h"
 #include "temp_weight.h"
-#include "input_data.h"
+#include <unordered_map>
 
 #define MENU_NUM 4
 #define IDM_PLOT_INPUT 100
@@ -70,16 +70,16 @@ private:
 	RECT select_box_left, select_box_right;
 
 	int plot_input_count;
-	static set<Node*> plot_in_list;
-	static set<Node*> plot_out_list;
+	set<Node*> plot_in_list;
+	set<Node*> plot_out_list;
+	unordered_map<Node*, COLORREF> border_clr_sample;
 
 	vector<Node*> copy_list;
 	bool shift_down;
 
-	static HWND plotWindowHwnd, inputWindowHwnd, inputGUIWindowHwnd, outputWindowHwnd;
-	static HINSTANCE* g_hInst;
-	static vector<InputData*> input_data_list;
-	static set<InputData*> input_data_set[2];
+	HWND plotWindowHwnd, inputWindowHwnd, inputGUIWindowHwnd, outputWindowHwnd;
+	HINSTANCE* g_hInst;
+	
 
 public:
 	GUI(HINSTANCE* g_hInst);
@@ -95,11 +95,11 @@ public:
 	void keyboard_up(string input);
 
 
-	static void RefreshPlot();
-	static LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
-	static LRESULT CALLBACK WndProcInput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
-	static LRESULT CALLBACK WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
-	static LRESULT CALLBACK WndProcOutput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
+	void RefreshPlot();
+	LRESULT CALLBACK WndProcPlot(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
+	LRESULT CALLBACK WndProcInput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
+	LRESULT CALLBACK WndProcInputGUI(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
+	LRESULT CALLBACK WndProcOutput(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
 };
 
 #endif

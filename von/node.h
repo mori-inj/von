@@ -12,8 +12,11 @@ class Node : public Button
 {
 private:
 	long double input;
+	long double target_output;
 	long double bias;
 	int idx;
+	long double delta;
+	vector<long double> grad;
 public:
 	bool plot_mode;
 	bool input_node;
@@ -35,7 +38,13 @@ public:
 	long double get_bias();
 	long double get_input();
 	void set_input(long double input);
+	long double get_linear_output();
 	long double get_output();
+	void set_target_output(long double x);
+	long double get_delta();
+	long double calc_delta();
+	void calc_grad();
+	void update_weight(long double learning_rate);
 };
 
 #endif

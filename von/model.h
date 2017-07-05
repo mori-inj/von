@@ -4,6 +4,7 @@
 #include <vector>
 #include <set>
 #include "node.h"
+#include "input_data.h"
 
 using namespace std;
 
@@ -14,6 +15,9 @@ private:
 	set<pair<Node*, Node*> > weight_set;
 	vector<Weight*> weight_list;
 public:
+	vector<InputData*> input_data_list;
+	set<InputData*> input_data_set[2];
+
 	Model();
 	~Model();
 	int get_node_num() { return (int)node_list.size(); }
@@ -26,6 +30,7 @@ public:
 	vector<Node*>::iterator get_last_node_iter();
 	void erase_node(Node* node);
 	void reindex();
+	void train(long double learning_rate, set<Node*>& plot_in_list, set<Node*>& plot_out_list, HWND& plotWindowHwnd);
 
 	void setXY_of_idx(int x, int y, int idx); // #GUI
 	int get_idx_of_clicked_node(int x, int y); // #GUI

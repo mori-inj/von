@@ -15,8 +15,9 @@ Weight::Weight(Weight& weight)
 Weight::Weight(Node* src)
 {
 	w = 0;
-	while(w==0)
+	while(w==0) {
 		w = 2 * ((long double)rand() - RAND_MAX/2) / RAND_MAX;
+	}
 	cout << "weight: " <<  w << endl;
 	plot_mode = false;
 	this->src = src;
@@ -25,8 +26,9 @@ Weight::Weight(Node* src)
 Weight::Weight(Node* src, Node* dst)
 {
 	w = 0;
-	while(w==0)
+	while(w==0) {
 		w = 2 * ((long double)rand() - RAND_MAX/2) / RAND_MAX;
+	}
 	cout << "weight: " << w << endl;
 	plot_mode = false;
 	this->src = src;
